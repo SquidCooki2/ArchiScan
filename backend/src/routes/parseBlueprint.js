@@ -69,9 +69,20 @@ function decodedSize(base64) {
   return (base64.length / 4) * 3 - padding;
 }
 
-/** Calls the model for one floor image, parses and validates; retries once on invalid output. */
-async function getWallsForFloor(claude, base64, mediaType, floorIndex = 0) {
+/**
+ * Runs the primary CubiCasa5k Mask R-CNN pixel-segmentation & vectorization pipeline for one floor image.
+ * Falls back to the Claude Opus Vision parser if the trained CNN weights are not present on disk.
+ */
+async function getWallsForFloor({ maskRcnn, claude }, base64, mediaType, floorIndex = 0) {
   const tagFloor = (items) => items.map((w) => ({ ...w, floor: floorIndex }));
+
+  if (maskRcnn && typeof maskRcnn.hasTrainedWeights === 'function' && maskRcnn.hasTrainedWeights()) {
+    const cnnElements = await maskRcnn.parseBlueprintImage(base64, mediaType);
+    if (Array.isArray(cnnElements)) {
+      return tagFloor(validateWalls(cnnElements, floorIndex));
+    }
+  }
+
   let text = await claude.parseBlueprintImage(base64, mediaType);
   try {
     return tagFloor(validateWalls(extractJson(text), floorIndex));
@@ -90,7 +101,7 @@ async function getWallsForFloor(claude, base64, mediaType, floorIndex = 0) {
   }
 }
 
-function createParseBlueprintRouter({ config, claude }) {
+function createParseBlueprintRouter({ config, claude, maskRcnn }) {
   const router = express.Router();
 
   router.post('/parse-blueprint', async (req, res) => {
@@ -107,7 +118,9 @@ function createParseBlueprintRouter({ config, claude }) {
     req.imageBytes = totalBytes;
 
     const perFloorWalls = await Promise.all(
-      images.map((img, floorIndex) => getWallsForFloor(claude, img.base64, img.mediaType, floorIndex))
+      images.map((img, floorIndex) =>
+        getWallsForFloor({ maskRcnn, claude }, img.base64, img.mediaType, floorIndex)
+      )
     );
     const walls = perFloorWalls.flat();
 

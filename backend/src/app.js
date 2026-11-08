@@ -4,6 +4,7 @@ const Anthropic = require('@anthropic-ai/sdk');
 const { HttpError } = require('./lib/errors');
 const { createParseBlueprintRouter } = require('./routes/parseBlueprint');
 const { createEvacuationBriefRouter } = require('./routes/evacuationBrief');
+const { createMaskRcnnService } = require('./services/maskRcnn');
 
 function sendError(res, status, code, message, headers = {}) {
   for (const [k, v] of Object.entries(headers)) res.set(k, v);
@@ -11,9 +12,10 @@ function sendError(res, status, code, message, headers = {}) {
 }
 
 /**
- * Express app factory. `claude` is injected so tests can mock the model service.
+ * Express app factory. `maskRcnn` (primary CNN segmentation service) and `claude`
+ * (fallback vision service) are injected so tests can mock either layer.
  */
-function createApp({ config, claude }) {
+function createApp({ config, claude, maskRcnn = createMaskRcnnService(config) }) {
   const app = express();
 
   app.use(cors({ origin: config.corsOrigin }));
@@ -30,7 +32,7 @@ function createApp({ config, claude }) {
   });
 
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-  app.use('/api', createParseBlueprintRouter({ config, claude }));
+  app.use('/api', createParseBlueprintRouter({ config, claude, maskRcnn }));
   app.use('/api', createEvacuationBriefRouter({ config, claude }));
 
   app.use((req, res) => sendError(res, 404, 'NOT_FOUND', 'Route not found'));

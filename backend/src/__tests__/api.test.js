@@ -2,6 +2,7 @@ const test = require('node:test');
 const assert = require('node:assert/strict');
 const { extractJson } = require('../lib/extractJson');
 const { validateWalls } = require('../lib/validateWalls');
+const { vectorizeMasks } = require('../services/maskRcnn');
 const { createApp } = require('../app');
 
 const WALL = { type: 'wall', floor: 0, x: 2, z: 0.1, width: 4, depth: 0.2, rotation: 0 };
@@ -66,12 +67,40 @@ test('validateWalls: drops few invalid, rejects many invalid', () => {
   assert.throws(() => validateWalls([{ ...WALL, width: 0 }]));
 });
 
+test('maskRcnn.vectorizeMasks: converts wall, window, door, and furniture pixel masks into elements', () => {
+  const w = 10;
+  const h = 10;
+  const wallMask = new Uint8Array(w * h);
+  // Horizontal wall from x=1..8, y=1
+  for (let x = 1; x <= 8; x++) wallMask[1 * w + x] = 1;
+
+  const couchMask = new Uint8Array(w * h);
+  for (let y = 4; y <= 5; y++) for (let x = 4; x <= 5; x++) couchMask[y * w + x] = 1;
+
+  const elements = validateWalls(
+    vectorizeMasks(
+      {
+        width: w,
+        height: h,
+        classes: { wall: wallMask, couch: couchMask },
+        orientations: { couch: [Math.PI] },
+      },
+      0.5
+    )
+  );
+  assert.equal(elements.length, 2);
+  assert.equal(elements[0].type, 'wall');
+  assert.equal(elements[0].width, 4);
+  assert.equal(elements[1].type, 'couch');
+  assert.equal(elements[1].rotation, 3.142);
+});
+
 // ---- Route tests with mocked claude service ----
 const config = { corsOrigin: 'http://localhost:5173', maxImageBytes: 100 };
 const IMG = Buffer.from('hello').toString('base64');
 
-async function withServer(claude, fn) {
-  const server = createApp({ config, claude }).listen(0);
+async function withServer(claude, fn, maskRcnn) {
+  const server = createApp({ config, claude, maskRcnn }).listen(0);
   const base = `http://localhost:${server.address().port}`;
   const originalLog = console.log;
   console.log = () => {};
@@ -107,6 +136,32 @@ test('200 success, data URL accepted', async () => {
     assert.equal(r.status, 200);
     assert.deepEqual(r.body, [WALL]);
   });
+});
+
+test('200 uses primary Mask R-CNN segmentation when weights are present, falls back to Claude when absent', async () => {
+  let claudeCalled = false;
+  const fallbackClaude = {
+    parseBlueprintImage: async () => {
+      claudeCalled = true;
+      return JSON.stringify([WALL]);
+    },
+  };
+  const cnnWall = { type: 'wall', floor: 0, x: 5, z: 2, width: 6, depth: 0.25, rotation: 0 };
+  const activeMaskRcnn = {
+    hasTrainedWeights: () => true,
+    parseBlueprintImage: async () => [cnnWall],
+  };
+
+  await withServer(
+    fallbackClaude,
+    async (req) => {
+      const r = await req(post, { image: IMG });
+      assert.equal(r.status, 200);
+      assert.deepEqual(r.body, [cnnWall]);
+      assert.equal(claudeCalled, false);
+    },
+    activeMaskRcnn
+  );
 });
 
 test('200 multi-floor images array tags floor 0, 1, ... in order', async () => {

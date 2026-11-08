@@ -2,6 +2,7 @@ require('dotenv').config();
 const { loadConfig } = require('./config');
 const { createApp } = require('./app');
 const { createClaudeService } = require('./services/claude');
+const { createMaskRcnnService } = require('./services/maskRcnn');
 
 let config;
 try {
@@ -11,7 +12,9 @@ try {
   process.exit(1);
 }
 
-const app = createApp({ config, claude: createClaudeService(config) });
+const maskRcnn = createMaskRcnnService(config);
+const claude = createClaudeService(config);
+const app = createApp({ config, claude, maskRcnn });
 app.listen(config.port, () => {
   console.log(`Listening on http://localhost:${config.port}`);
 });

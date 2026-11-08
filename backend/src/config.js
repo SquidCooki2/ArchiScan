@@ -1,3 +1,5 @@
+const path = require('node:path');
+
 /**
  * Reads and validates environment configuration.
  * Throws on missing required values (server.js turns this into a clean exit).
@@ -13,12 +15,17 @@ function loadConfig(env = process.env) {
   if (!Number.isInteger(port) || port < 0) throw new Error('PORT must be a non-negative integer');
   if (!Number.isFinite(maxImageBytes) || maxImageBytes <= 0) throw new Error('MAX_IMAGE_BYTES must be a positive number');
 
+  const cnnWeightsPath = env.CNN_WEIGHTS_PATH
+    ? path.resolve(env.CNN_WEIGHTS_PATH.trim())
+    : path.resolve(__dirname, '../weights/cubicasa5k_maskrcnn.onnx');
+
   return Object.freeze({
     port,
     anthropicApiKey: env.ANTHROPIC_API_KEY.trim(),
     anthropicModel: env.ANTHROPIC_MODEL.trim(),
     corsOrigin: (env.CORS_ORIGIN || 'http://localhost:5173').trim(),
     maxImageBytes,
+    cnnWeightsPath,
   });
 }
 

@@ -1,7 +1,7 @@
 # Project Level Planning & Initialization
 
 ## 1. Project Overview
-This project is a rapid-prototype web application that takes 2D floorplan images and generates interactive 3D models with section-view capabilities. It utilizes Claude's highest-tier Opus model for advanced vision-based blueprint parsing.
+This project is a rapid-prototype web application that takes 2D floorplan images and generates interactive 3D models with section-view capabilities. Its primary blueprint parser is a specialized Convolutional Neural Network (**Mask R-CNN** trained on the open-source **CubiCasa5k** floorplan dataset) that performs pixel-level classification into per-class binary masks (walls, windows, doors, stairs, and furniture/fixtures) and vectorizes connected mask regions into meter-space 3D geometry. If the local CNN weights file (`CNN_WEIGHTS_PATH`) is not present on disk, the backend automatically falls back to Claude's highest-tier Opus vision model.
 
 ## 2. Folder Structure
 The repository is split into distinct environments for separation of concerns, with documentation folders at every layer for AI agents and human contributors.

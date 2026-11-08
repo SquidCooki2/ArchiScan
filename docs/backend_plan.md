@@ -1,18 +1,20 @@
 # Backend Technical Plan
 
 ## 1. Goal & Architecture
-The backend serves as a secure, fast bridge between the frontend and the Claude Vision API. Its primary responsibility is to keep the API key hidden from the browser, process the incoming image, instruct the high-tier Claude Opus model to act as an architectural parser, and guarantee a cleanly formatted JSON response.
+The backend parses 2D floorplan images into clean, meter-space JSON arrays of walls, windows, doors, stairs, and furniture.
+*   **Primary Pipeline (CubiCasa5k Mask R-CNN Pixel Segmentation — `services/maskRcnn.js`):** Industry-standard Convolutional Neural Network (**Mask R-CNN**) trained on annotated floorplan datasets (**CubiCasa5k**). The model classifies floorplan pixels into separate binary masks per class (a black-and-white mask for walls, another for windows, another for doors, stairs, and each furniture/fixture class), extracts connected-component bounding boxes (`extractMaskComponents`), and vectorizes them (`vectorizeMasks`) into meter-space structural and furniture elements.
+*   **Fallback Pipeline (Claude Opus Vision — `services/claude.js`):** If the trained CNN weights (`CNN_WEIGHTS_PATH`, default `weights/cubicasa5k_maskrcnn.onnx`) are not present on disk, `/api/parse-blueprint` falls back automatically to the Claude Opus Vision API.
 
 ```text
 Browser --POST /api/parse-blueprint {image, mediaType}--> Express
-   Express: validate -> call Claude (vision) -> extract JSON -> validate/normalize walls
-Browser <--200 [ {x,z,width,depth,rotation}, ... ] -------- Express
+   Express: validate -> Mask R-CNN (pixel masks -> vectorizeMasks) [fallback: Claude Vision] -> validateWalls
+Browser <--200 [ {type,floor,x,z,width,depth,rotation}, ... ] -------- Express
 ```
 
 ## 2. Tech Stack
 *   **Runtime:** Node.js (v20+; installed: v26) with Express 5, CommonJS (`"type": "commonjs"`).
 *   **Middleware:** `cors` for cross-origin requests, `express.json({ limit: '50mb' })` to handle large Base64 image payloads.
-*   **AI SDK:** `@anthropic-ai/sdk`.
+*   **Vision Models:** CubiCasa5k Mask R-CNN (`services/maskRcnn.js`, weights at `CNN_WEIGHTS_PATH`) with `@anthropic-ai/sdk` (`services/claude.js`) as fallback.
 *   **Config:** `dotenv`. No other runtime dependencies are needed. Use the built-in `node:test` runner for tests (no Jest).
 
 > [!NOTE]
@@ -24,32 +26,35 @@ backend/
 ├── .env                  # git-ignored, real secrets
 ├── .env.example          # committed, placeholders only
 ├── .gitignore            # node_modules, .env
-├── package.json          # add "start": "node src/server.js", "dev": "node --watch src/server.js", "test": "node --test"
+├── package.json          # "start": "node src/server.js", "dev": "node src/server.js", "test": "node --test"
+├── weights/              # optional local CNN weights (cubicasa5k_maskrcnn.onnx)
 ├── docs/
 └── src/
     ├── server.js         # loads env, builds app, listens on PORT
     ├── app.js            # express app factory (exported for tests): cors, json, routes, error handler
     ├── config.js         # reads + validates env, exports a frozen config object
     ├── routes/
-    │   └── parseBlueprint.js   # POST /api/parse-blueprint handler
+    │   └── parseBlueprint.js   # POST /api/parse-blueprint handler (Mask R-CNN primary -> Claude fallback)
     ├── services/
-    │   └── claude.js     # Anthropic client + parseBlueprintImage(base64, mediaType) -> raw text
+    │   ├── maskRcnn.js   # Primary CubiCasa5k Mask R-CNN pixel-mask classifier & mask-to-vector converter
+    │   └── claude.js     # Fallback Anthropic client + parseBlueprintImage(base64, mediaType) -> raw text
     ├── prompts/
     │   └── blueprintPrompt.js  # exported SYSTEM_PROMPT and USER_PROMPT strings
     ├── lib/
     │   ├── extractJson.js      # pulls a JSON array out of model text
     │   ├── validateWalls.js    # schema check + normalization
     │   └── errors.js           # HttpError class + helpers
-    └── __tests__/              # node:test unit tests (extractJson, validateWalls, route with mocked claude service)
+    └── __tests__/              # node:test unit tests (maskRcnn, extractJson, validateWalls, routes)
 ```
 
 ## 4. Environment Variables (`.env.example`)
 ```text
 PORT=3000
+CNN_WEIGHTS_PATH=weights/cubicasa5k_maskrcnn.onnx   # primary Mask R-CNN weights; falls back to Claude if absent
 ANTHROPIC_API_KEY=sk-ant-...
-ANTHROPIC_MODEL=<highest-tier Opus model id>   # check the Anthropic models docs for the current id
+ANTHROPIC_MODEL=<highest-tier Opus model id>        # check the Anthropic models docs for the current id
 CORS_ORIGIN=http://localhost:5173
-MAX_IMAGE_BYTES=5242880                         # 5 MB decoded; Anthropic's per-image limit
+MAX_IMAGE_BYTES=5242880                             # 5 MB decoded; Anthropic's per-image limit
 ```
 `config.js` must fail fast on startup (clear message, `process.exit(1)`) if `ANTHROPIC_API_KEY` or `ANTHROPIC_MODEL` is missing. Never log the key.
 
@@ -107,7 +112,14 @@ Accepts either a single floor image or an `images` array for multi-floor buildin
     *   `"stairs"`: emitted only on the lower floor where the staircase ascends (`UP`); `"DN"` stairs on upper floors are ignored so the staircase is not duplicated across floors. Includes `x, z, width, depth` (`width` = run length along travel direction, `depth` = tread width) and `rotation` in `[0, 2π)` indicating the ascending (`UP`) direction (`0` = `+Z`/down, `π/2` = `+X`/right, `π` = `-Z`/up, `3π/2` = `-X`/left).
     *   **Furniture (`"couch" | "chair" | "fridge" | "sink" | "bed" | "wardrobe" | "cabinet" | "toilet" | "table" | "bath"`):** placed at center `(x, z)` on `floor`. Because the frontend renders fixed-size 3D models, furniture items omit `width` and `depth`. Their `rotation` is normalized into `[0, 2π)` indicating the direction the front of the item faces (`0` = `+Z`/down, `π/2` = `+X`/right, `π` = `-Z`/up, `3π/2` = `-X`/left). Common aliases (`"cabinets"`, `"bathtub"`, `"sofa"`, `"closet"`, `"staircase"`, etc.) are mapped to their canonical type in `validateWalls`.
 
-## 7. Claude Integration (`services/claude.js`)
+## 7. Primary Mask R-CNN Pipeline (`services/maskRcnn.js`) & Claude Fallback (`services/claude.js`)
+### 7a. Primary Pipeline: CubiCasa5k Mask R-CNN (`services/maskRcnn.js`)
+*   **Pixel Classification:** Analyzes the 2D floorplan image and outputs separate binary masks (`Uint8Array` of `0` and `1` pixels) for each architectural and furniture class: a mask of only wall pixels, a mask of only window pixels, a mask of only door pixels, a mask for stairs, and masks for each furniture/fixture type (`couch`, `chair`, `fridge`, `sink`, `bed`, `wardrobe`, `cabinet`, `toilet`, `table`, `bath`).
+*   **Training Data:** Trained on annotated floorplan datasets such as the open-source **CubiCasa5k** dataset (`weights/cubicasa5k_maskrcnn.onnx`).
+*   **Mask-to-Vector Conversion (`extractMaskComponents` + `vectorizeMasks`):** Flood-fills connected pixel components on each class mask, derives axis-aligned bounding boxes and orientations, and converts pixel spans to meter-space `{ type, x, z, width, depth, rotation }` (for structural classes) and `{ type, x, z, rotation }` (for furniture classes).
+*   **Weight Check (`hasTrainedWeights`):** If the trained weights file at `config.cnnWeightsPath` exists, `/api/parse-blueprint` uses `maskRcnn.parseBlueprintImage` as the primary parser. If the weights file is not found on disk, it automatically falls back to the Claude Vision service below.
+
+### 7b. Fallback Pipeline: Claude Integration (`services/claude.js`)
 *   Instantiate once: `new Anthropic({ apiKey: config.anthropicApiKey, timeout: 120000, maxRetries: 2 })`.
 *   Call `client.messages.create({ model, max_tokens: 8192, temperature: 0, system: SYSTEM_PROMPT, messages: [{ role: 'user', content: [ { type: 'image', source: { type: 'base64', media_type, data } }, { type: 'text', text: USER_PROMPT } ] }] })`. Put the image block **before** the text block.
 *   Return the concatenated text of all `content` blocks of type `text`.
