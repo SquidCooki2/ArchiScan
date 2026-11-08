@@ -1,16 +1,47 @@
-# React + Vite
+# ArchiScan frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some Oxlint rules.
+React 19 / Vite / Tailwind v4 / React Three Fiber. Turns the shared wall-array contract into an interactive 3D model with a horizontal section view.
 
-Currently, two official plugins are available:
+## Start locally
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+Use Node.js 22.12+ or Node.js 24 LTS with npm.
 
-## React Compiler
+```sh
+cd frontend
+npm install
+npm run dev
+```
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+Open http://localhost:5173. Without `VITE_API_URL`, uploads use demonstration geometry after a short delay. “Try a sample space” works in either mode. Demo geometry is clearly labeled and does not represent the uploaded image.
 
-## Expanding the Oxlint configuration
+## Connect the backend
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and Oxlint's TypeScript related rules in your project.
+```sh
+cp .env.example .env
+```
+
+Set `VITE_API_URL=http://localhost:3000` and restart Vite. The backend must allow `http://localhost:5173` via CORS. The server port is strict so Vite cannot silently switch to a disallowed port. Add `?mock=1` to force mock mode even with the backend configured.
+
+The frontend sends `POST /api/parse-blueprint` with `{ image: "<raw base64>", mediaType: "image/png" }`. It expects a nonempty wall array and surfaces the backend's `error.message`. There is a 150-second timeout, cancellation, and validation of both images and returned geometry. A failed replacement upload preserves the previous model.
+
+Environment values are embedded at build time. Set `VITE_API_URL` before `npm run build` for a real API deployment. Keep credentials on the backend; no secrets belong in `VITE_*` variables.
+
+## Controls
+
+- Drag to orbit, scroll/pinch to zoom, right-drag/two-finger drag to pan.
+- Enable **Section view**, then adjust the height. Accent-colored horizontal caps fill cut walls.
+- **Reset section** restores 2.70 m and disables clipping; **Fit to view** restores the fitted camera.
+- **New upload** replaces the model only after successful parsing. Cancel a request with the button or Escape.
+
+## Checks
+
+```sh
+npm run lint
+npm test
+npm run build
+npm run preview
+```
+
+Geometry tests cover rotated bounds, sample orientation, and malformed server data. See [verification.md](docs/verification.md) for browser checks and the remaining integration step.
+
+Three.js is pinned to 0.182.0 because R3F 9.8 uses `THREE.Clock`, which is deprecated in r183+. The viewer explicitly selects PCF shadows and creates its environment locally, avoiding an external HDR download. Revisit the pin when R3F adopts the new timer API.
