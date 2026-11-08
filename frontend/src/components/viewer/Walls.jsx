@@ -1,100 +1,104 @@
+/* oxlint-disable react/immutability -- Three.js materials and clipping planes are mutable engine objects. */
+import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
-import { memo, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { WALL_HEIGHT } from '../../lib/geometry'
+import { capPositions, cutPlane, elementParts, partitionFootprint, prismPositions, sectionCap, wallFootprint } from '../../lib/sections'
+import { useReducedMotion } from '../../lib/useReducedMotion'
 
-const RISE_SECONDS = 0.6
-const SWEEP_SECONDS = 0.9
-
-/**
- * Renders walls[] as boxes inside a group centered on the world origin.
- * Each wall is drawn twice: a lit front-face mesh, and a flat back-face "cap"
- * that shows through the section cut as solid poché fill.
- */
-function Walls({ walls, bounds, plane, reducedMotion }) {
-  const material = useMemo(
-    () =>
-      new THREE.MeshStandardMaterial({
-        color: '#e8e6e1',
-        roughness: 0.85,
-        metalness: 0,
-        clippingPlanes: [plane],
-        clipShadows: true,
-        side: THREE.FrontSide,
-      }),
-    [plane],
-  )
-  const capMaterial = useMemo(
-    () =>
-      new THREE.MeshBasicMaterial({
-        color: '#8ec5e8',
-        clippingPlanes: [plane],
-        side: THREE.BackSide,
-      }),
-    [plane],
-  )
-  const geometries = useMemo(
-    () => walls.map((w) => new THREE.BoxGeometry(w.width, WALL_HEIGHT, w.depth)),
-    [walls],
-  )
-  useEffect(
-    () => () => {
-      material.dispose()
-      capMaterial.dispose()
-    },
-    [material, capMaterial],
-  )
-  useEffect(() => () => geometries.forEach((g) => g.dispose()), [geometries])
-
-  // Walls rise in a diagonal sweep from the plan's top-left corner, like a scan passing over it.
-  const delays = useMemo(() => {
-    const span = bounds.sizeX + bounds.sizeZ || 1
-    return walls.map((w) => ((w.x - bounds.minX + (w.z - bounds.minZ)) / span) * SWEEP_SECONDS)
-  }, [walls, bounds])
-
-  const groups = useRef([])
-  const startedAt = useRef(null)
-  const settled = useRef(false)
-
-  useFrame(({ clock }) => {
-    if (settled.current) return
-    if (startedAt.current === null) startedAt.current = clock.elapsedTime
-    const t = clock.elapsedTime - startedAt.current
-    let done = true
-    groups.current.forEach((g, i) => {
-      if (!g) return
-      const p = reducedMotion ? 1 : THREE.MathUtils.clamp((t - delays[i]) / RISE_SECONDS, 0, 1)
-      const eased = 1 - Math.pow(1 - p, 3)
-      g.visible = eased > 0
-      g.scale.y = Math.max(eased, 0.0001)
-      if (p < 1) done = false
-    })
-    settled.current = done
-  })
-
-  return (
-    <group position={[-bounds.cx, 0, -bounds.cz]}>
-      {walls.map((w, index) => (
-        <group
-          key={index}
-          ref={(el) => {
-            groups.current[index] = el
-          }}
-          position={[w.x, 0, w.z]}
-          rotation={[0, -w.rotation, 0]}
-        >
-          <mesh
-            geometry={geometries[index]}
-            material={material}
-            position-y={WALL_HEIGHT / 2}
-            castShadow
-            receiveShadow
-          />
-          <mesh geometry={geometries[index]} material={capMaterial} position-y={WALL_HEIGHT / 2} />
-        </group>
-      ))}
-    </group>
-  )
+function geometryFromPositions(positions) {
+  const geometry = new THREE.BufferGeometry()
+  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geometry.computeVertexNormals()
+  geometry.computeBoundingSphere()
+  return geometry
 }
 
-export default memo(Walls)
+function Wall({ wall, index, bounds, section, area, selected, selecting, onSelect, materials, reducedMotion, plane, openDoors }) {
+  const body = useRef()
+  const verticalCaps = useRef()
+  const horizontalCaps = useRef()
+  const elapsed = useRef(0)
+  const region = section.scope === 'area' ? area : null
+  const pieces = useMemo(() => elementParts(wall).filter(part => !(openDoors && part.kind === 'door')).flatMap(part => {
+    const footprint = wallFootprint(part.thickness ? { ...wall, depth: part.thickness } : wall, bounds)
+    const split = region ? partitionFootprint(footprint, region) : [{ points: footprint, inside: false }]
+    return split.map(piece => ({ ...piece, part, geometry: geometryFromPositions(prismPositions(piece.points, part.top, part.base)) }))
+  }), [wall, bounds, region, openDoors])
+  const affected = section.enabled && (section.scope === 'all' || (section.scope === 'walls' && selected))
+  const caps = useMemo(() => pieces.map(piece => {
+    const clipped = affected || (section.enabled && section.scope === 'area' && piece.inside)
+    if (!clipped) return null
+    const positions = capPositions(sectionCap(piece.points, bounds, section, piece.part.base, piece.part.top))
+    return positions.length ? geometryFromPositions(positions) : null
+  }), [pieces, affected, bounds, section])
+  useEffect(() => () => pieces.forEach(piece => piece.geometry.dispose()), [pieces])
+  useEffect(() => () => caps.forEach(cap => cap?.dispose()), [caps])
+
+  useFrame((_, delta) => {
+    elapsed.current += delta
+    const t = reducedMotion ? 1 : THREE.MathUtils.clamp((elapsed.current - Math.min(index * 0.035, 0.45)) / 0.6, 0, 1)
+    const scale = Math.max(0.0001, 1 - (1 - t) ** 3)
+    body.current.scale.y = scale
+    verticalCaps.current.scale.y = scale
+    horizontalCaps.current.visible = section.enabled && section.position <= WALL_HEIGHT * scale
+  })
+
+  function select(event, clipped) {
+    if (!selecting || event.delta > 4 || (clipped && plane.distanceToPoint(event.point) < -0.0001)) return
+    event.stopPropagation()
+    onSelect(index)
+  }
+
+  return <group>
+    <group ref={body} scale-y={reducedMotion ? 1 : 0.0001}>
+      {pieces.map((piece, i) => {
+        const clipped = affected || (section.enabled && section.scope === 'area' && piece.inside)
+        const material = piece.part.kind !== 'wall' ? materials[`${piece.part.kind}${clipped ? 'Cut' : ''}`]
+          : (selected && section.scope === 'walls') || (section.scope === 'area' && piece.inside)
+            ? clipped ? materials.selectedCut : materials.selected
+            : clipped ? materials.cut : materials.solid
+        return <mesh key={i} geometry={piece.geometry} material={material} castShadow={piece.part.kind !== 'glass'} receiveShadow
+          onClick={event => select(event, clipped)} userData={{ wallIndex: index }} />
+      })}
+    </group>
+    <group ref={verticalCaps}>
+      {section.axis !== 'y' && caps.map((geometry, i) => geometry && <mesh key={i} geometry={geometry} material={materials.cap} onClick={event => select(event, false)} />)}
+    </group>
+    <group ref={horizontalCaps}>
+      {section.axis === 'y' && caps.map((geometry, i) => geometry && <mesh key={i} geometry={geometry} material={materials.cap} onClick={event => select(event, false)} />)}
+    </group>
+  </group>
+}
+
+export default function Walls({ walls, bounds, section, area, selectedWalls, selecting, onSelect, openDoors = false }) {
+  const plane = useMemo(() => new THREE.Plane(), [])
+  const materials = useMemo(() => {
+    const options = { color: '#e8e6e1', roughness: 0.85, metalness: 0, side: THREE.DoubleSide }
+    const clip = { clippingPlanes: [plane], clipShadows: true }
+    const glass = { color: '#93c5fd', transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.1, depthWrite: false, side: THREE.DoubleSide }
+    const door = { color: '#8b5a2b', roughness: 0.65, metalness: 0.05, side: THREE.DoubleSide }
+    return {
+      glass: new THREE.MeshStandardMaterial(glass),
+      glassCut: new THREE.MeshStandardMaterial({ ...glass, ...clip }),
+      door: new THREE.MeshStandardMaterial(door),
+      doorCut: new THREE.MeshStandardMaterial({ ...door, ...clip }),
+      solid: new THREE.MeshStandardMaterial(options),
+      cut: new THREE.MeshStandardMaterial({ ...options, clippingPlanes: [plane], clipShadows: true }),
+      selected: new THREE.MeshStandardMaterial({ ...options, color: '#a5b4fc', emissive: '#312e81', emissiveIntensity: 0.2 }),
+      selectedCut: new THREE.MeshStandardMaterial({ ...options, color: '#a5b4fc', emissive: '#312e81', emissiveIntensity: 0.2, clippingPlanes: [plane], clipShadows: true }),
+      cap: new THREE.MeshBasicMaterial({ color: '#a5b4fc', side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }),
+    }
+  }, [plane])
+  const reducedMotion = useReducedMotion()
+  useLayoutEffect(() => {
+    const definition = cutPlane(bounds, section)
+    plane.normal.set(definition.normal.x, definition.normal.y, definition.normal.z)
+    plane.constant = definition.constant
+  }, [plane, bounds, section])
+  useEffect(() => () => Object.values(materials).forEach(material => material.dispose()), [materials])
+  return <group>
+    {walls.map((wall, index) => <Wall key={index} wall={wall} index={index} bounds={bounds} section={section} area={area}
+      selected={selectedWalls.includes(index)} selecting={selecting} onSelect={onSelect} materials={materials} reducedMotion={reducedMotion} plane={plane} openDoors={openDoors} />)}
+  </group>
+}
