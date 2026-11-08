@@ -10,3 +10,5 @@
 - [ ] Task 7: Real-backend end-to-end test with actual floorplans. Backend API arrived in the merge; live Claude integration still needs verification.
 
 See `verification.md` for checks and limitations. The requested section-view extension adds X/Z cuts, direction reversal, selected walls, and precise rectangular area cuts; see `section-view.md`.
+
+The updated backend sample's typed walls/windows/doors are supported, including actual window apertures, framed glass, door leaves and handles, and section caps respecting each part's vertical span. See `architectural-elements.md`.

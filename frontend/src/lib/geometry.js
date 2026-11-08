@@ -1,6 +1,20 @@
 export const WALL_HEIGHT = 2.7
 export const PLAN_CUT_HEIGHT = 1.2
 export const MIN_CUT_HEIGHT = 0.1
+export const ELEMENT_TYPES = ['wall', 'window', 'door']
+export const elementType = element => element.type ?? 'wall'
+
+export function openingDimensions(element) {
+  const window = elementType(element) === 'window'
+  const sillHeight = element.sillHeight ?? (window ? 0.9 : 0)
+  return { sillHeight, height: Math.min(element.height ?? (window ? 1.2 : 2.1), WALL_HEIGHT - sillHeight) }
+}
+
+export function countElements(elements) {
+  const counts = { wall: 0, window: 0, door: 0 }
+  for (const element of elements) counts[elementType(element)]++
+  return counts
+}
 
 // Image-space clockwise angles become negative Y rotations in three.js.
 export function computeBounds(walls) {
@@ -22,8 +36,15 @@ export function computeBounds(walls) {
 
 export function validateWalls(walls) {
   if (!Array.isArray(walls) || !walls.length) throw new Error('No walls were found. Try a clearer floorplan image.')
-  if (!walls.every(w => w && ['x', 'z', 'width', 'depth', 'rotation'].every(key => Number.isFinite(w[key])) && w.width > 0 && w.depth > 0 && w.rotation >= 0 && w.rotation < Math.PI)) {
-    throw new Error('The server returned invalid wall geometry. Please try another floorplan.')
+  if (!walls.every(w => {
+    if (!w || !ELEMENT_TYPES.includes(w.type === undefined ? 'wall' : w.type) || !['x', 'z', 'width', 'depth', 'rotation'].every(key => Number.isFinite(w[key])) || w.width <= 0 || w.depth <= 0 || w.rotation < 0 || w.rotation >= Math.PI) return false
+    if (elementType(w) === 'wall') return true
+    if (w.sillHeight !== undefined && !Number.isFinite(w.sillHeight)) return false
+    const { sillHeight, height } = openingDimensions(w)
+    return Number.isFinite(sillHeight) && sillHeight >= 0 && sillHeight < WALL_HEIGHT && Number.isFinite(height) && height > 0
+      && (w.height === undefined || (Number.isFinite(w.height) && w.height > 0))
+  })) {
+    throw new Error('The server returned invalid wall geometry or opening dimensions. Please try another floorplan.')
   }
   return walls
 }

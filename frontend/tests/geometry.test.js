@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { computeBounds, validateWalls } from '../src/lib/geometry.js'
+import { computeBounds, countElements, validateWalls } from '../src/lib/geometry.js'
 
 test('camera bounds include the thickness of diagonal and vertical walls', () => {
   const diagonal = computeBounds([{ x: 2, z: 3, width: 4, depth: 2, rotation: Math.PI / 4 }])
@@ -48,11 +48,12 @@ test('bad server geometry is rejected before reaching the renderer', () => {
 test('saved backend apartment output renders unchanged, including rounded vertical rotations', () => {
   const walls = JSON.parse(readFileSync(new URL('../../sample_output/apartment_furnished_preview.walls.json', import.meta.url)))
   assert.equal(validateWalls(walls), walls)
-  assert.equal(walls.length, 17)
+  assert.equal(walls.length, 27)
+  assert.deepEqual(countElements(walls), { wall: 17, window: 6, door: 4 })
   assert.ok(walls.some(wall => wall.rotation === 1.571))
   const bounds = computeBounds(walls)
-  assert.ok(Math.abs(bounds.width - 11.96) < 0.003)
-  assert.ok(Math.abs(bounds.depth - 9.62) < 0.003)
+  assert.ok(Math.abs(bounds.width - 10.769) < 0.003)
+  assert.ok(Math.abs(bounds.depth - 8.662) < 0.003)
   assert.ok(Object.values(bounds).every(Number.isFinite))
 })
 

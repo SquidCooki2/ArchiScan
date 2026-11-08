@@ -8,14 +8,22 @@ import { WALL_HEIGHT } from '../../lib/geometry'
 const VIEW_DIRECTION = new THREE.Vector3(0.3, 0.9, 1).normalize()
 
 /** Fit across aspect ratios; user interaction cancels the camera glide. */
-export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel }) {
+export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, active = true }) {
   const get = useThree(state => state.get)
   const controls = useThree(state => state.controls)
   const size = useThree(state => state.size)
   const goal = useRef(null)
+  const wasActive = useRef(active)
+  const lastFit = useRef(null)
 
   useEffect(() => {
     if (!controls) return
+    const returning = active && !wasActive.current
+    wasActive.current = active
+    if (!active) { goal.current = null; return }
+    const previous = lastFit.current
+    if (returning && previous?.bounds === bounds && previous.fitKey === fitKey && previous.width === size.width && previous.height === size.height) return
+    lastFit.current = { bounds, fitKey, width: size.width, height: size.height }
     const { camera } = get()
     const vertical = THREE.MathUtils.degToRad(camera.fov)
     const mobile = size.width < 640
@@ -54,7 +62,7 @@ export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel }) {
     const cancel = () => { goal.current = null }
     controls.addEventListener('start', cancel)
     return () => controls.removeEventListener('start', cancel)
-  }, [get, controls, bounds, fitKey, reducedMotion, hasModel, size.width, size.height])
+  }, [get, controls, bounds, fitKey, reducedMotion, hasModel, active, size.width, size.height])
 
   useFrame((_, delta) => {
     const g = goal.current

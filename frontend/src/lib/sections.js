@@ -106,11 +106,11 @@ export function partitionFootprint(points, area) {
 }
 
 /** Flat triangle positions for a closed vertical prism over a convex footprint. */
-export function prismPositions(points, height = WALL_HEIGHT) {
+export function prismPositions(points, height = WALL_HEIGHT, base = 0) {
   if (points.length < 3) return []
   const positions = []
   const push = (...vertices) => vertices.forEach(p => positions.push(...p))
-  const bottom = p => [p.x, 0, p.z], top = p => [p.x, height, p.z]
+  const bottom = p => [p.x, base, p.z], top = p => [p.x, height, p.z]
   for (let i = 1; i < points.length - 1; i++) {
     push(bottom(points[0]), bottom(points[i]), bottom(points[i + 1]))
     push(top(points[0]), top(points[i + 1]), top(points[i]))
@@ -123,10 +123,10 @@ export function prismPositions(points, height = WALL_HEIGHT) {
 }
 
 /** True intersections, including vertical cuts through diagonal walls, get a solid cap. */
-export function sectionCap(points, bounds, section) {
+export function sectionCap(points, bounds, section, bottom = 0, top = WALL_HEIGHT) {
   const coordinate = cutCoordinate(bounds, section)
   if (section.axis === 'y') {
-    if (coordinate <= EPSILON || coordinate >= WALL_HEIGHT - EPSILON) return []
+    if (coordinate <= bottom + EPSILON || coordinate >= top - EPSILON) return []
     return points.map(p => [p.x, coordinate, p.z])
   }
   const axis = section.axis
@@ -146,7 +146,7 @@ export function sectionCap(points, bounds, section) {
   crossings.sort((a, b) => a[otherAxis] - b[otherAxis])
   if (crossings.length < 2) return []
   const a = crossings[0], b = crossings[crossings.length - 1]
-  return [[a.x, 0, a.z], [b.x, 0, b.z], [b.x, WALL_HEIGHT, b.z], [a.x, WALL_HEIGHT, a.z]]
+  return [[a.x, bottom, a.z], [b.x, bottom, b.z], [b.x, top, b.z], [a.x, top, a.z]]
 }
 
 export function capPositions(points) {
