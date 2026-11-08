@@ -10,7 +10,8 @@ function HumanMarker({ placement }) {
     <mesh position-y={1.15}><capsuleGeometry args={[0.12, 0.48, 4, 12]} /><meshStandardMaterial color={color} transparent opacity={0.75} depthTest={false} depthWrite={false} /></mesh>
     {[-1, 1].map(side => <group key={side}>
       <mesh position={[side * 0.075, 0.45, 0]}><cylinderGeometry args={[0.055, 0.045, 0.85, 10]} /><meshStandardMaterial color={color} transparent opacity={0.75} depthTest={false} depthWrite={false} /></mesh>
-      <mesh position={[side * 0.18, 1.12, 0]}><capsuleGeometry args={[0.04, 0.45, 4, 8]} /><meshStandardMaterial color={color} transparent opacity={0.75} depthTest={false} depthWrite={false} /></mesh>
+      <mesh position={[side * 0.075, 0.025, -0.025]}><boxGeometry args={[0.11, 0.05, 0.18]} /><meshStandardMaterial color={color} transparent opacity={0.75} depthTest={false} depthWrite={false} /></mesh>
+      <mesh position={[side * 0.16, 1.12, 0]}><capsuleGeometry args={[0.04, 0.45, 4, 8]} /><meshStandardMaterial color={color} transparent opacity={0.75} depthTest={false} depthWrite={false} /></mesh>
     </group>)}
     <mesh rotation-x={-Math.PI / 2} position-y={0.01}><ringGeometry args={[BODY_RADIUS, BODY_RADIUS + 0.04, 32]} /><meshBasicMaterial color={color} side={THREE.DoubleSide} depthTest={false} /></mesh>
   </group>
