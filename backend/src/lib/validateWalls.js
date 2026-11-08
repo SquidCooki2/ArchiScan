@@ -27,13 +27,16 @@ function normalizeRotation(r) {
   return out;
 }
 
-function normalizeWall(item) {
+function normalizeWall(item, defaultFloor = 0) {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
 
   const rawType = item.type === undefined ? 'wall' : String(item.type).toLowerCase().trim();
   if (!ALLOWED_TYPES.has(rawType)) return null;
 
-  const wall = { type: rawType };
+  const rawFloor = item.floor === undefined ? defaultFloor : toNumber(item.floor);
+  if (!Number.isInteger(rawFloor) || rawFloor < 0) return null;
+
+  const wall = { type: rawType, floor: rawFloor };
   for (const key of KEYS) {
     const n = toNumber(item[key]);
     if (!Number.isFinite(n)) return null;
@@ -59,18 +62,18 @@ function normalizeWall(item) {
 }
 
 /**
- * Validates and normalizes an array of wall/window/door elements.
+ * Validates and normalizes an array of wall/window/door elements for a given floor.
  * Drops invalid items; throws ModelOutputError if more than 20% are invalid.
  * An empty input array returns an empty array.
  */
-function validateWalls(arr) {
+function validateWalls(arr, defaultFloor = 0) {
   if (!Array.isArray(arr)) throw new ModelOutputError('Walls payload is not an array');
   if (arr.length === 0) return [];
 
   const valid = [];
   let invalid = 0;
   for (const item of arr) {
-    const wall = normalizeWall(item);
+    const wall = normalizeWall(item, defaultFloor);
     if (wall) valid.push(wall);
     else invalid += 1;
   }
