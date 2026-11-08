@@ -4,7 +4,6 @@ import Icon from './Icon'
 import { floorOptions } from '../lib/floorOptions'
 import { Button, focusRing, Panel, Segmented, Switch } from './ui'
 
-const ROOFS = ROOF_TYPES.map(({ id, label }) => ({ id, label, icon: `${id}Roof` }))
 const DIRECTIONS = [
   { id: 'y', label: 'Above' },
   { id: 'x', label: 'Side' },
@@ -59,12 +58,12 @@ function MoreOptions({ cut }) {
 export default function ExplorePanel({ floors, floor, onFloor, roofType, onRoof, cut, onResetView, hasFurniture, showFurniture, onShowFurniture }) {
   return <Panel label="Explore the model">
     {floors > 1 && <Segmented legend="Floors" name="floors" options={floorOptions(floors, { all: true })} value={floor} onChange={onFloor} />}
-    {floor === 'all' && <Segmented legend="Roof" name="roof-style" options={ROOFS} value={roofType} onChange={onRoof} />}
+    {floor === 'all' && <Segmented legend="Roof" name="roof-style" options={ROOF_TYPES} value={roofType} onChange={onRoof} />}
     <div>
       <CutSlider cut={cut} />
       <div className="mt-2 grid grid-cols-2 gap-2">
         <Button onClick={cut.showPlan}>See floor plan</Button>
-        <Button variant="quiet" disabled={!cut.cutting && !cut.area} onClick={cut.reset}><Icon name="reset" className="size-3.5" />Undo cut</Button>
+        <Button variant="quiet" disabled={!cut.cutting && !cut.area} onClick={cut.reset}>Undo cut</Button>
       </div>
     </div>
     {hasFurniture && <Switch label="Furniture" checked={showFurniture} onChange={onShowFurniture} />}

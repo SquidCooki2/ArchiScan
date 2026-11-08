@@ -3,7 +3,7 @@
 ## 1. Goal & Aesthetic
 The primary goal of the frontend is to deliver a highly polished, sleek, and impressive presentation. The UI must feel modern and minimal, allowing the 3D model to be the focal point. Transitions should be smooth, and user interactions (like uploading and slicing the model) must provide immediate visual feedback.
 
-*   **Look:** a white card architect's model on a dark drafting table (`#171c22`), with solid panels (`#20262e`). Drafting blue (`#7cb7ff`) marks cuts and selection only; green and orange appear only in escape mode. One typeface, Archivo. See `frontend/src/components/ui.jsx`.
+*   **Look:** a homely textured house on a dark drafting table (`#171c22`), with solid panels (`#20262e`). Drafting blue (`#7cb7ff`) marks cuts and selection only; green and orange appear only in escape mode. One typeface, Archivo. See `frontend/src/components/ui.jsx`.
 *   **Motion:** `transition-all duration-300 ease-out` on interactive elements; fade/scale-in for panels.
 
 ## 2. Tech Stack
@@ -35,13 +35,22 @@ src/
 │   ├── ExplorePanel.jsx      # floors, roof, cut slider, more options
 │   ├── WalkPanel.jsx         # choosing a spot, then walking controls
 │   ├── EvacuationPanel.jsx   # fire, person, and route
+│   ├── BomPanel.jsx          # bill of materials and schedules
+│   ├── ExportMenu.jsx        # downloads for other software
 │   └── viewer/
 │       ├── Viewer.jsx        # <Canvas>, lights, camera, controls, environment
 │       ├── Walls.jsx         # maps walls[] -> meshes, centered group
 │       ├── Floor.jsx         # ground plane / grid sized to model bounds
+│       ├── surfaces.js       # plaster, siding, planks and shingles painted in the browser
+│       ├── furnitureGeometry.js  # merges, colors and fits a furniture model
+│       ├── fixtureFinishes.js    # porcelain, brass, oak and towels for the fixtures
 │       └── SectionPlane.jsx  # (optional) translucent visual of the cut plane
 ├── lib/
-│   └── geometry.js           # computeBounds(walls), constants
+│   ├── geometry.js           # computeBounds(walls), constants
+│   ├── billOfMaterials.js    # quantities, schedules and checks from the plan
+│   ├── exports.js            # CSV, DXF and JSON files
+│   ├── settleFurniture.js    # moves or trims furniture clear of walls, stairs and each other
+│   └── surfaceUv.js          # texture coordinates in meters
 └── samples/
     └── sampleWalls.json      # hardcoded L-shaped plan for developing without the backend
 ```
@@ -94,7 +103,7 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
 *   `computeBounds(elements)` returns `{ minX, maxX, minZ, maxZ, cx, cz, size }` using element centers ± `width/2` (rough extent is fine).
 *   Render `<group position={[-cx, 0, -cz]}>` so the model is centered at the world origin.
 *   Create shared materials (`useMemo`) that all reference `clippingPlanes={[plane]}` and `clipShadows`:
-    *   `wallMaterial`: `meshStandardMaterial({ color: '#e8e6e1', roughness: 0.85, metalness: 0, side: THREE.DoubleSide })`
+    *   `wallMaterial` (see Surfaces for its textures): `meshStandardMaterial({ color: '#e8e6e1', roughness: 0.85, metalness: 0, side: THREE.DoubleSide })`
     *   `windowMaterial`: `meshStandardMaterial({ color: '#93c5fd', transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide })`
     *   `doorMaterial`: `meshStandardMaterial({ color: '#8b5a2b', roughness: 0.65, metalness: 0.05, side: THREE.DoubleSide })`
 *   For each element `w` (defaulting `w.type ?? 'wall'`):
@@ -115,9 +124,9 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
 *   For each element with `type === 'stairs'` (`{ type: 'stairs', floor, x, z, width, depth, rotation }`):
     *   `width` is the horizontal run length along the direction of ascent; `depth` is the tread width perpendicular to travel; `rotation` in `[0, 2π)` is the ascending (`UP`) direction (`0` = `+Z`, `π/2` = `+X`, `π` = `-Z`, `3π/2` = `-X`).
     *   Generate `N = Math.max(8, Math.round(WALL_HEIGHT / 0.18))` steps (15 for a 2.7 m story) climbing from `y = floor * WALL_HEIGHT` to `y = (floor + 1) * WALL_HEIGHT`. Each step `i` (`0..N-1`) is a solid prism of tread length `width / N` and height `(i + 1) * (WALL_HEIGHT / N)`, from `-width / 2` to `+width / 2` along the ascending axis. Prisms merge into one mesh per material, so a flight costs a few draw calls.
-    *   Strings and glass guards run up both sides, leaving the lowest 0.7 m of the flight open so one that lands against a wall can still be stepped off. A glass guard surrounds the stairwell upstairs, open at the head of the flight (`structuralElements`).
+    *   Strings and a handrail on slim posts run up both sides, leaving the lowest 0.7 m of the flight open so one that lands against a wall can still be stepped off. The handrail is one prism with a `slope`, sheared to the pitch of the flight in `Walls.jsx`. A low curb, posts and a flat rail surround the stairwell upstairs, open at the head of the flight (`structuralElements`). None of it is glass.
     *   **Upper floor slab cutout:** `FloorSlabs.jsx` builds each slab as an extruded shape with one hole per flight arriving from below, held inside the slab's edge (`stairwellCorners`).
-    *   **Walking (`lib/walkthrough.js`):** `buildWalkBuilding` makes one collision world per floor. `walkStep` moves between them past the middle of a flight, and `walkHeight` gives the height of the step underfoot, which the camera eases toward. Colliders make the flight a corridor, closed at the end you can't leave by on that floor. A flight with no floor above it is solid.
+    *   **Walking (`lib/walkthrough.js`):** `buildWalkBuilding` makes one collision world per floor. `walkStep` moves between them past the middle of a flight, and `walkHeight` gives the height of the step underfoot, which the camera eases toward. Heading roughly along a flight, `walkStep` follows it and eases toward the middle, so a diagonal approach still climbs. Between a flight's sides only they collide, so a wall overlapping the flight by a few cm can't hold anyone. `stairHint` names the flight just ahead for the walking controls. Colliders make the flight a corridor, closed at the end you can't leave by on that floor. A flight with no floor above it is solid.
 
 ### Furniture Models & Sizing Caveat (`public/assets/furniture/`)
 *   All 10 furniture and fixture types now have dedicated 3D models in `frontend/public/assets/furniture/` (see `public/assets/furniture/SOURCES.md`; procedural fixture geometry is no longer needed once wired to the `.glb` files):
@@ -129,15 +138,31 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
         *   `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall. `shelf_A_big.gltf` is really a wall shelf of `[2.0, 0.4, 0.5]`, so it isn't used.
         *   `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf`, native bounding box `[2.0, 1.0, 2.0]`
     *   **Kenney Kitchen & Bathroom Fixtures (`*.glb`):**
-        *   `"fridge"` → `fridge.glb`, native bounding box `[0.52, 0.92, 0.36]`
-        *   `"sink"` → `sink_kitchen.glb` (`[0.43, 0.39, 0.43]`) / `sink_bathroom.glb` (`[0.43, 0.55, 0.30]`)
+        *   `"fridge"` → `fridge.glb`, native bounding box `[0.52, 0.92, 0.41]`
+        *   `"sink"` → `sink_kitchen.glb` (`[0.43, 0.49, 0.45]`) / `sink_bathroom.glb` (`[0.43, 0.58, 0.30]`)
         *   `"toilet"` → `toilet.glb`, native bounding box `[0.31, 0.45, 0.48]`
-        *   `"bath"` → `bathtub.glb`, native bounding box `[1.19, 0.30, 0.56]`
+        *   `"bath"` → `bathtub.glb`, native bounding box `[1.19, 0.42, 0.56]`
 *   **IMPORTANT — Model Sizing & Pivot Normalization:**
     *   **KayKit `.gltf` models** are authored roughly **1.5–2× larger than real-world meters** (scale down `~0.55×`), while **Kenney `.glb` fixture models** (`fridge.glb`, `sink_kitchen.glb`, `sink_bathroom.glb`, `toilet.glb`, `bathtub.glb`) are roughly **half real-world size** (scale up `~2×`, e.g., `fridge.glb` is `0.92 m` tall as shipped) and have corner-anchored origins (`x` in `[-width, 0]`).
     *   `lib/furniture.js` lists a real-world target box in meters per type, and `viewer/Furniture.jsx` fits each loaded GLTF/GLB model's geometry (recursively merging child meshes when a `.glb` has multiple nodes like `doorLeft`/`doorRight` on `fridge.glb` or `cover` on `toilet.glb`) to that box: recentered in plan, standing on `y = 0`, and scaled per axis.
-*   **Rendering (`viewer/Furniture.jsx`):** one `instancedMesh` per type using the loaded `.gltf`/`.glb` geometry (replacing procedural `viewer/fixtureGeometry.js`). Boxes at the final size stand in while models load, and stay if they can't load. All furniture shares one basswood tone (`#c8b89f`, fixtures `#cfd4d8`) in place of the pack's texture, so it reads as part of the white card model. Materials use the same clipping planes as the slabs, so every cut applies. Model front is `+Z`; `rotation.y = item.rotation`.
+*   **Rendering (`viewer/Furniture.jsx`, `viewer/furnitureGeometry.js`):** one `instancedMesh` per kind. `furnitureGeometry` merges every node of a model, bakes each vertex's color from its texture or material, and fits the result to the target box, standing on `y = 0` and centered in plan. Target boxes stay close to each model's own proportions so nothing is squashed. Colors are softened and pulled a little toward a warm wood tone (`FURNITURE` in `viewer/colors.js`) so the two packs read as a set, and saturated blue stays with the cut tools. The Kenney fixtures also take a finish from `viewer/fixtureFinishes.js`: ivory porcelain, brass taps, oak where a home would have it, plus towels, a toilet roll and a pot plant merged into the same geometry. The Kenney fixtures are authored facing `-Z`, so `lib/furniture.js` gives them a half turn. `drawnModel` picks `sink_bathroom.glb` for a sink with a toilet or bath within 3 m and no wall between them, and `sink_kitchen.glb` otherwise. Boxes at the final size stand in while models load, and stay if they can't load. The shared material uses the same clipping planes as the slabs, so every cut applies. Model front is `+Z`; `rotation.y = item.rotation`.
+*   **Settling (`lib/settleFurniture.js`):** plans place furniture by its center, so pieces can land inside walls, stairs or each other. `App.jsx` runs `settleFurniture` once on every model that loads. It nudges each piece clear of walls, openings, the stairs and their landing, and other pieces, with the smaller piece moving more and chairs allowed to tuck under tables. Whatever still doesn't fit is trimmed through `fitWidth` and `fitDepth` (no less than 70 percent). Drawing, walking and escape routes all read the settled result, through `furnitureRect`. Non-furniture elements are untouched.
 *   **Explore** has a Furniture switch. Walking and escape routes always show furniture, since it's in the way.
+
+### Surfaces (`viewer/surfaces.js`, `lib/surfaceUv.js`)
+*   Plaster, weatherboard siding, oak planks and roof shingles are painted once onto canvases in the browser, so the model needs no image downloads. `surfaceUvs` gives every triangle texture coordinates in meters, so a pattern keeps its scale and runs on across pieces.
+*   Walls are plaster inside and siding outside: `Walls.jsx` sorts each piece's faces by whether they look out of the building, and gives each set its own material. Floors and stair treads are planks. Roof slopes are shingles and gable ends are siding. Escape mode keeps a plain floor so the route arrows stay readable.
+*   **Clean joins:** `elementParts` squares quarter turns stored as `1.571`, corners are welded to a 0.1 mm grid, and a slightly slimmer hidden core reaches past each wall piece and stair side to fill the gaps plans leave by rounding to the centimeter. `Viewer.jsx` uses a logarithmic depth buffer, because otherwise the hidden end faces at each join show through as hairlines. That also means `polygonOffset` has no effect, and the ground's shadow plane must not write depth or it hides the grid.
+
+### Bill of materials (`lib/billOfMaterials.js`, `BomPanel.jsx`)
+*   The BoM tab turns the loaded plan into a takeoff. `measureBuilding` does the slow measuring once per model, using the same floor grid and room numbers as the escape route. `billOfMaterials` then applies the chosen floor and roof, and `displayQuantity` and `orderQuantity` apply metric or imperial.
+*   **Measured from the plan:** gross and net floor area, exterior and interior wall lengths and areas less openings, wall types by side and thickness, door and window schedules, a room schedule with glass to floor ratio, stair geometry, fixtures and furniture counts, and the roof for the chosen type. A piece is exterior when most of its length has the outside of the building on one side.
+*   **Assumed:** a plan doesn't say what a building is made of, so framing, sheathing, boards, paint and the slab apply a typical light-frame house to those measurements. Each row's detail line says how it was worked out. Rows are grouped by MasterFormat division. "To order" adds a waste factor per material and rounds up to whole units or sheets. There are no prices, because any figure would be invented.
+*   **Schedules:** door and window sizes group to the nearest 50 mm, since plans round to the centimeter and would otherwise list a 1.33 m and a 1.34 m window as different marks. Marks stay the same on every floor.
+*   **Worth checking:** daylight, exit door width and stair rise, going and width against 2021 IRC figures, shown as a first look and not a code review.
+
+### Export (`lib/exports.js`, `ExportMenu.jsx`)
+*   The Export button in the header downloads, for the whole building: a CSV of the bill and schedules (Excel, Google Sheets, Numbers), a DXF of the floor plans (R12, AIA layer names, meters, floors side by side, for AutoCAD, Revit, SketchUp, ArchiCAD), and a JSON of the elements and quantities. The CSV uses the chosen units and roof, and guards against spreadsheet formula injection from file names.
 
 ### Floor (`Floor.jsx`)
 A `<mesh rotation-x={-Math.PI / 2}>` plane at `y = 0` slightly larger than the bounds (`size + 4`), dark material that receives shadows, plus Drei `<Grid infiniteGrid fadeDistance={40} cellColor="#333" sectionColor="#555" />`.
@@ -175,7 +200,7 @@ A mode beside Explore that answers "there's a fire here and I'm there, how do I 
 *   **Limits:** floors are viewed one at a time. Stairs are straight flights between two adjacent floors, as the contract gives them.
 
 ## 10. UI Components
-*   **Header:** the wordmark, the mode switch once a model is loaded, and "New plan". It's hidden while walking so the view stays clear.
+*   **Header:** the wordmark as plain text, the mode switch once a model is loaded (Explore, Walk, Escape route, BoM), Export, and "New plan". While walking only the mode switch stays, and it goes too while the mouse is captured, so the view stays clear.
 *   **Landing:** one primary upload button, with a full-window overlay while a file is dragged over the page. The hidden `<input type="file" multiple>` takes up to 5 images, one per floor, sorted by file name.
 *   **LoadingOverlay:** shows the uploaded plan with a scan line, and says how many floors are being read.
 *   **ErrorToast:** says what went wrong and how to fix it, auto-dismisses after 6 s, and has a close button.

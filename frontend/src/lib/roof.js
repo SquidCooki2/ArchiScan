@@ -1,5 +1,6 @@
 import * as THREE from 'three'
 import { elementFloor, floorBase, floorCount, WALL_HEIGHT, isEnclosure } from './geometry.js'
+import { surfaceUvs } from './surfaceUv.js'
 
 /**
  * Roofs are generated entirely on the frontend from the wall data (no API change).
@@ -331,9 +332,11 @@ export function buildRoofGeometry(type, rect) {
   if (type === 'flat') {
     const box = new THREE.BoxGeometry(hl * 2, FLAT_ROOF_THICKNESS, hw * 2)
     box.translate(0, FLAT_ROOF_THICKNESS / 2, 0)
-    box.clearGroups()
-    box.addGroup(0, box.index.count, 0)
-    return box
+    const flat = box.toNonIndexed()
+    flat.clearGroups()
+    flat.addGroup(0, flat.attributes.position.count, 0)
+    flat.setAttribute('uv', new THREE.BufferAttribute(surfaceUvs(flat.attributes.position.array), 2))
+    return flat
   }
 
   const h = Math.tan(ROOF_PITCH) * hw
@@ -379,6 +382,7 @@ export function buildRoofGeometry(type, rect) {
 
   const geometry = new THREE.BufferGeometry()
   geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3))
+  geometry.setAttribute('uv', new THREE.BufferAttribute(surfaceUvs(positions), 2))
   geometry.addGroup(0, counts[0], 0)
   if (counts[1]) geometry.addGroup(counts[0], counts[1], 1)
   geometry.computeVertexNormals()

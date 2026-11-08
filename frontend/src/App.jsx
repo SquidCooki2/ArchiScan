@@ -4,9 +4,11 @@ import { computeBounds, countElements, floorCount } from './lib/geometry'
 import { modelNameFor, orderFloorFiles } from './lib/floorFiles'
 import { computeRoofPlan, DEFAULT_ROOF, roofTopHeight } from './lib/roof'
 import { useEvacuation } from './lib/useEvacuation'
+import { settleFurniture } from './lib/settleFurniture'
 import { useSection } from './lib/useSection'
 import { buildWalkWorld, suggestSpawn } from './lib/walkthrough'
 import { SAMPLES } from './samples/backendSample'
+import BomPanel from './components/BomPanel'
 import ErrorToast from './components/ErrorToast'
 import EvacuationPanel from './components/EvacuationPanel'
 import ExplorePanel from './components/ExplorePanel'
@@ -40,7 +42,10 @@ export default function App() {
   const [humanSpawn, setHumanSpawn] = useState(null)
   const [humanTransition, setHumanTransition] = useState(false)
   const [humanFloor, setHumanFloor] = useState(0)
+  const [humanLocked, setHumanLocked] = useState(false)
+  const [humanStairs, setHumanStairs] = useState(null)
   const [showFurniture, setShowFurniture] = useState(true)
+  const [units, setUnits] = useState('metric')
   const humanMovement = useRef({})
   const input = useRef()
   const request = useRef(null)
@@ -75,10 +80,11 @@ export default function App() {
     setHumanSpawn(null)
     setHumanPlacement(null)
     setHumanTransition(false)
+    setHumanStairs(null)
     humanMovement.current = {}
   }, [])
   const exitWalk = useCallback(() => { leaveWalk(); setMode('explore') }, [leaveWalk])
-  const enterWalk = useCallback(position => { setHumanTransition(true); setHumanFloor(walkFloor); setHumanSpawn({ ...position, floor: walkFloor }) }, [walkFloor])
+  const enterWalk = useCallback(position => { setHumanTransition(true); setHumanStairs(null); setHumanFloor(walkFloor); setHumanSpawn({ ...position, floor: walkFloor }) }, [walkFloor])
 
   function changeMode(next) {
     if (next === mode) return
@@ -128,7 +134,7 @@ export default function App() {
       revoke(committedUrls.current)
       committedUrls.current = pendingUrls.current
       pendingUrls.current = []
-      setWalls(nextWalls)
+      setWalls(settleFurniture(nextWalls))
       setModel({ name: sample ? sample.name : modelNameFor(ordered), previews, demoUpload: !sample && isMockMode() })
       setFloorView('all')
       setMode('explore')
@@ -188,7 +194,7 @@ export default function App() {
   const planFloor = activeFloor === 'all' ? 0 : activeFloor
   const planCaption = floors > 1 ? `Floor ${planFloor + 1} plan` : 'Original plan'
   const hint = cut.drawing ? 'Drag on the floor, or click two corners. Esc cancels.' : mode === 'escape' && evacuation.plan ? HINTS.escape : HINTS.orbit
-  const statusText = !hasModel || loading ? '' : humanMode === 'human' ? `Walking${floors > 1 ? ` on Floor ${humanFloor + 1}` : ''}. Use W A S D or the arrow keys to move, and Escape to stop.` : `3D model ready: ${model.name}.`
+  const statusText = !hasModel || loading ? '' : humanMode === 'human' ? `Walking${floors > 1 ? ` on Floor ${humanFloor + 1}` : ''}. Use W A S D or the arrow keys to move, Q and E to turn, and Escape to stop.` : `3D model ready: ${model.name}.`
 
   return <div className="relative min-h-svh overflow-hidden bg-[#171c22] font-[family-name:Archivo,ui-sans-serif,system-ui,sans-serif] text-slate-100 selection:bg-sky-300/30">
     <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_62%_42%,#2a323c_0%,#171c22_68%)]" />
@@ -196,20 +202,21 @@ export default function App() {
       <Suspense fallback={null}>
         <Viewer walls={shownWalls} hero={!hasModel} modelKey={modelKey} floor={hasModel ? activeFloor : 'all'} section={cut.section} sectionRange={cut.range} area={cut.area} resetKey={resetKey}
           drawingArea={cut.drawing} onArea={cut.updateArea} onCompleteArea={cut.completeArea} onCancelArea={cut.cancelArea} onPosition={cut.setPosition}
-          humanMode={humanMode} humanPlacement={humanPlacement} humanSpawn={humanSpawn} humanMovement={humanMovement} onHumanPreview={setHumanPlacement} onHumanEnter={enterWalk} onHumanExit={exitWalk} onHumanTransition={setHumanTransition} onHumanFloor={setHumanFloor} showFurniture={showFurniture}
-          roofPlan={roofPlan} roofType={roofType} maxHeight={maxHeight} loadedAt={loadedAt} evacuation={evacuation} />
+          humanMode={humanMode} humanPlacement={humanPlacement} humanSpawn={humanSpawn} humanMovement={humanMovement} onHumanPreview={setHumanPlacement} onHumanEnter={enterWalk} onHumanExit={exitWalk} onHumanTransition={setHumanTransition} onHumanFloor={setHumanFloor} onHumanLock={setHumanLocked} onHumanStairs={setHumanStairs} showFurniture={showFurniture}
+          roofPlan={roofPlan} roofType={roofType} maxHeight={maxHeight} loadedAt={loadedAt} evacuation={evacuation} widePanel={mode === 'bom'} />
       </Suspense>
     </div>
     <div inert={loading}>
       {!hasModel && <div className="pointer-events-none fixed top-0 left-0 z-20 p-3 sm:px-[6vw] sm:py-6"><Wordmark /></div>}
-      {hasModel && <Header loading={loading} mode={mode} onMode={changeMode} onUpload={browse} walking={humanMode === 'human'} />}
+      {hasModel && <Header loading={loading} mode={mode} onMode={changeMode} onUpload={browse} walking={humanMode === 'human'} hidden={humanMode === 'human' && humanLocked} exportFrom={{ walls, name: model.name, roofType, units }} />}
       <input ref={input} type="file" multiple accept={ACCEPTED_TYPES.join(',')} className="hidden" aria-label="Upload floor plans" onChange={event => { const files = [...event.target.files]; event.target.value = ''; if (files.length) open({ files }) }} />
       {!hasModel && <Landing onBrowse={browse} onSample={sampleId => open({ sampleId })} samples={[SAMPLES.house, SAMPLES.apartment]} />}
       {hasModel && humanMode !== 'human' && <ModelTitle name={model.name} counts={counts} bounds={bounds} floors={floors} demoUpload={model.demoUpload} />}
       {hasModel && humanMode !== 'human' && <PlanCard previewUrl={model.previews[planFloor] ?? model.previews[0]} caption={planCaption} hint={hint} />}
       {hasModel && mode === 'explore' && <ExplorePanel floors={floors} floor={floorView} onFloor={changeFloor} roofType={roofType} onRoof={setRoofType} cut={cut} onResetView={resetCamera} hasFurniture={counts.furniture > 0} showFurniture={showFurniture} onShowFurniture={setShowFurniture} />}
       {hasModel && humanMode === 'placing' && <WalkStart floors={floors} floor={walkFloor} onFloor={changeFloor} placement={humanPlacement} onMiddle={startInMiddle} />}
-      {hasModel && humanMode === 'human' && <WalkControls movement={humanMovement} transitioning={humanTransition} onRepick={leaveWalk} floor={floors > 1 ? humanFloor : null} />}
+      {hasModel && humanMode === 'human' && <WalkControls movement={humanMovement} transitioning={humanTransition} onRepick={leaveWalk} floor={floors > 1 ? humanFloor : null} locked={humanLocked} stairs={humanStairs} />}
+      {hasModel && mode === 'bom' && <BomPanel walls={walls} floors={floors} floor={floorView} onFloor={changeFloor} roofType={roofType} onRoof={setRoofType} units={units} onUnits={setUnits} />}
       {hasModel && mode === 'escape' && <EvacuationPanel evacuation={evacuation} previews={model.previews} floors={floors} onResetView={resetCamera} />}
     </div>
     {dragging && !loading && <div className="pointer-events-none fixed inset-3 z-30 grid place-items-center rounded-xl border-2 border-dashed border-sky-300 bg-[#171c22]/70"><p className="text-xl font-medium text-slate-100">Drop to build this floor plan</p></div>}
