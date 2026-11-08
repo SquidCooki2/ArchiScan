@@ -1,6 +1,12 @@
 const { ModelOutputError } = require('./errors');
 
 const KEYS = ['x', 'z', 'width', 'depth', 'rotation'];
+const ALLOWED_TYPES = new Set(['wall', 'window', 'door']);
+const WALL_HEIGHT = 2.7;
+const DEFAULTS = {
+  window: { sillHeight: 0.9, height: 1.2 },
+  door: { sillHeight: 0, height: 2.1 },
+};
 const MAX_WALLS = 500;
 const MAX_INVALID_RATIO = 0.2;
 
@@ -23,7 +29,11 @@ function normalizeRotation(r) {
 
 function normalizeWall(item) {
   if (!item || typeof item !== 'object' || Array.isArray(item)) return null;
-  const wall = {};
+
+  const rawType = item.type === undefined ? 'wall' : String(item.type).toLowerCase().trim();
+  if (!ALLOWED_TYPES.has(rawType)) return null;
+
+  const wall = { type: rawType };
   for (const key of KEYS) {
     const n = toNumber(item[key]);
     if (!Number.isFinite(n)) return null;
@@ -32,11 +42,24 @@ function normalizeWall(item) {
   if (wall.width <= 0 || wall.depth <= 0) return null;
   wall.rotation = normalizeRotation(wall.rotation);
   for (const key of KEYS) wall[key] = round3(wall[key]);
+
+  if (rawType === 'window' || rawType === 'door') {
+    const def = DEFAULTS[rawType];
+    const sillRaw = item.sillHeight === undefined ? def.sillHeight : toNumber(item.sillHeight);
+    const heightRaw = item.height === undefined ? def.height : toNumber(item.height);
+    if (!Number.isFinite(sillRaw) || sillRaw < 0 || sillRaw >= WALL_HEIGHT) return null;
+    if (!Number.isFinite(heightRaw) || heightRaw <= 0) return null;
+
+    const clampedHeight = Math.min(heightRaw, WALL_HEIGHT - sillRaw);
+    wall.sillHeight = round3(sillRaw);
+    wall.height = round3(clampedHeight);
+  }
+
   return wall;
 }
 
 /**
- * Validates and normalizes an array of walls.
+ * Validates and normalizes an array of wall/window/door elements.
  * Drops invalid items; throws ModelOutputError if more than 20% are invalid.
  * An empty input array returns an empty array.
  */
@@ -58,4 +81,4 @@ function validateWalls(arr) {
   return valid.slice(0, MAX_WALLS);
 }
 
-module.exports = { validateWalls, MAX_WALLS };
+module.exports = { validateWalls, MAX_WALLS, WALL_HEIGHT };

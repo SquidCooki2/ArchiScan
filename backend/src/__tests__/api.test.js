@@ -4,7 +4,7 @@ const { extractJson } = require('../lib/extractJson');
 const { validateWalls } = require('../lib/validateWalls');
 const { createApp } = require('../app');
 
-const WALL = { x: 2, z: 0.1, width: 4, depth: 0.2, rotation: 0 };
+const WALL = { type: 'wall', x: 2, z: 0.1, width: 4, depth: 0.2, rotation: 0 };
 
 test('extractJson: plain, fenced, prose-wrapped, garbage', () => {
   const json = JSON.stringify([WALL]);
@@ -16,10 +16,22 @@ test('extractJson: plain, fenced, prose-wrapped, garbage', () => {
   assert.throws(() => extractJson(''));
 });
 
-test('validateWalls: valid, coercion, rounding, rotation', () => {
+test('validateWalls: valid, default type, coercion, rounding, rotation', () => {
   const out = validateWalls([{ x: '1.23456', z: 2, width: 3, depth: 0.2, rotation: -Math.PI / 2, extra: 1 }]);
-  assert.deepEqual(out, [{ x: 1.235, z: 2, width: 3, depth: 0.2, rotation: 1.571 }]);
+  assert.deepEqual(out, [{ type: 'wall', x: 1.235, z: 2, width: 3, depth: 0.2, rotation: 1.571 }]);
   assert.deepEqual(validateWalls([]), []);
+});
+
+test('validateWalls: window and door types with default and custom sillHeight/height', () => {
+  const out = validateWalls([
+    { type: 'window', x: 2, z: 0.1, width: 1.2, depth: 0.2, rotation: 0 },
+    { type: 'door', x: 4, z: 0.1, width: 0.9, depth: 0.2, rotation: 0, sillHeight: 0, height: 2.05 },
+  ]);
+  assert.deepEqual(out, [
+    { type: 'window', x: 2, z: 0.1, width: 1.2, depth: 0.2, rotation: 0, sillHeight: 0.9, height: 1.2 },
+    { type: 'door', x: 4, z: 0.1, width: 0.9, depth: 0.2, rotation: 0, sillHeight: 0, height: 2.05 },
+  ]);
+  assert.throws(() => validateWalls([{ ...WALL, type: 'roof' }]));
 });
 
 test('validateWalls: drops few invalid, rejects many invalid', () => {
