@@ -203,7 +203,7 @@ export default function App() {
         <Viewer walls={shownWalls} hero={!hasModel} modelKey={modelKey} floor={hasModel ? activeFloor : 'all'} section={cut.section} sectionRange={cut.range} area={cut.area} resetKey={resetKey}
           drawingArea={cut.drawing} onArea={cut.updateArea} onCompleteArea={cut.completeArea} onCancelArea={cut.cancelArea} onPosition={cut.setPosition}
           humanMode={humanMode} humanPlacement={humanPlacement} humanSpawn={humanSpawn} humanMovement={humanMovement} onHumanPreview={setHumanPlacement} onHumanEnter={enterWalk} onHumanExit={exitWalk} onHumanTransition={setHumanTransition} onHumanFloor={setHumanFloor} onHumanLock={setHumanLocked} onHumanStairs={setHumanStairs} showFurniture={showFurniture}
-          roofPlan={roofPlan} roofType={roofType} maxHeight={maxHeight} loadedAt={loadedAt} evacuation={evacuation} widePanel={mode === 'bom'} />
+          roofPlan={roofPlan} roofType={roofType} maxHeight={maxHeight} loadedAt={loadedAt} evacuation={evacuation} />
       </Suspense>
     </div>
     <div inert={loading}>

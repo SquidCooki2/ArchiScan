@@ -49,6 +49,7 @@ src/
 │   ├── geometry.js           # computeBounds(walls), constants
 │   ├── billOfMaterials.js    # quantities, schedules and checks from the plan
 │   ├── exports.js            # CSV, DXF and JSON files
+│   ├── prices.js             # rough unit prices for the bill
 │   ├── settleFurniture.js    # moves or trims furniture clear of walls, stairs and each other
 │   └── surfaceUv.js          # texture coordinates in meters
 └── samples/
@@ -157,7 +158,9 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
 ### Bill of materials (`lib/billOfMaterials.js`, `BomPanel.jsx`)
 *   The BoM tab turns the loaded plan into a takeoff. `measureBuilding` does the slow measuring once per model, using the same floor grid and room numbers as the escape route. `billOfMaterials` then applies the chosen floor and roof, and `displayQuantity` and `orderQuantity` apply metric or imperial.
 *   **Measured from the plan:** gross and net floor area, exterior and interior wall lengths and areas less openings, wall types by side and thickness, door and window schedules, a room schedule with glass to floor ratio, stair geometry, fixtures and furniture counts, and the roof for the chosen type. A piece is exterior when most of its length has the outside of the building on one side.
-*   **Assumed:** a plan doesn't say what a building is made of, so framing, sheathing, boards, paint and the slab apply a typical light-frame house to those measurements. Each row's detail line says how it was worked out. Rows are grouped by MasterFormat division. "To order" adds a waste factor per material and rounds up to whole units or sheets. There are no prices, because any figure would be invented.
+*   **Assumed:** a plan doesn't say what a building is made of, so framing, sheathing, boards, paint and the slab apply a typical light-frame house to those measurements. Each row's detail line says how it was worked out. Rows are grouped by MasterFormat division. "To order" adds a waste factor per material and rounds up to whole units or sheets.
+*   **Layout:** the panel is the same width as the other tabs. It shows the estimated cost, floor areas, and anything to look at. Materials, wall types, doors and windows, and rooms each fold away, and opening one closes the last.
+*   **Prices (`lib/prices.js`):** rough US retail prices, kept in one table so they're easy to change. A row's price is its rounded-up amount to order times its unit price, so the figures multiply out. That means totals can differ slightly between metric and imperial. Doors have a flat price by side of the building, and windows price by their glass. The total covers only the listed items, with no labor, tax, delivery, roof framing, wiring, or HVAC. Concrete, sheathing, drywall, and shingles were compared with published 2026 figures; the rest are general estimates.
 *   **Schedules:** door and window sizes group to the nearest 50 mm, since plans round to the centimeter and would otherwise list a 1.33 m and a 1.34 m window as different marks. Marks stay the same on every floor.
 *   **Worth checking:** daylight, exit door width and stair rise, going and width against 2021 IRC figures, shown as a first look and not a code review.
 
