@@ -4,6 +4,7 @@ import { memo, useEffect, useMemo, useRef } from 'react'
 import * as THREE from 'three'
 import { buildRoofGeometry } from '../../lib/roof'
 import { CARD, CUT } from './colors'
+import { surfaces } from './surfaces'
 import { useSectionClipping } from './useSectionClipping'
 
 /** Matches the walls' entrance: the roof settles once they have finished rising. */
@@ -19,10 +20,11 @@ function Roof({ plan, type, bounds, section, cut, region, loadedAt, reducedMotio
   const planes = useSectionClipping(bounds, section, cut, region)
   const materials = useMemo(() => {
     const clipping = { clippingPlanes: planes, clipIntersection: true }
+    const { shingles, shingleHeight, siding, sidingHeight } = surfaces()
     return {
       surfaces: [
-        new THREE.MeshStandardMaterial({ color: '#62666b', roughness: 0.9, metalness: 0, clipShadows: true, ...clipping }),
-        new THREE.MeshStandardMaterial({ color: CARD, roughness: 0.85, metalness: 0, clipShadows: true, ...clipping }),
+        new THREE.MeshStandardMaterial({ map: shingles, bumpMap: shingleHeight, bumpScale: 1.5, roughness: 0.9, metalness: 0, clipShadows: true, ...clipping }),
+        new THREE.MeshStandardMaterial({ color: CARD, map: siding, bumpMap: sidingHeight, bumpScale: 1.2, roughness: 0.85, metalness: 0, clipShadows: true, ...clipping }),
       ],
       fill: new THREE.MeshBasicMaterial({ color: CUT, side: THREE.BackSide, ...clipping }),
     }

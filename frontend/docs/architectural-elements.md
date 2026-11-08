@@ -22,26 +22,30 @@ All structural parts rotate with their source element using the same image-right
 Furniture items have the schema `{ type, floor, x, z, rotation }` (no `width` or `depth` in the JSON) with `rotation` in `[0, 2π)` indicating the direction the **front** of the item faces (`0` = `+Z`/down, `π/2` = `+X`/right, `π` = `-Z`/up, `3π/2` = `-X`/left).
 
 ### Asset Mapping (`frontend/public/assets/furniture/`)
-All 10 furniture and fixture types have dedicated 3D models in `frontend/public/assets/furniture/` (see `public/assets/furniture/SOURCES.md`; procedural fixture geometry in `viewer/fixtureGeometry.js` is replaced by the Kenney `.glb` fixture models):
+All 10 furniture and fixture types have dedicated 3D models in `frontend/public/assets/furniture/` (see `public/assets/furniture/SOURCES.md`):
 - **KayKit Furniture Bits (`*.gltf` + `*.bin` + `furniturebits_texture.png`):**
-  - `"couch"` → `couch.gltf` / `couch_pillows.gltf` (native size `3.0 × 1.22 × 1.6`)
-  - `"chair"` → `chair_A.gltf` / `chair_A_wood.gltf` / `chair_B.gltf` / `armchair.gltf` (native size `0.75 × 1.26 × 0.85`)
-  - `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf` (native size `3.1 × 1.0 × 3.0` double)
-  - `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf` (native size `2.0 × 1.0 × 1.0`)
+  - `"couch"` → `couch.gltf` (native size `3.0 × 1.22 × 1.6`)
+  - `"chair"` → `chair_A_wood.gltf` (native size `0.75 × 1.26 × 0.85`)
+  - `"bed"` → `bed_double_B.gltf` (native size `3.1 × 1.0 × 3.0` double)
+  - `"cabinet"` → `cabinet_medium.gltf` (native size `2.0 × 1.0 × 1.0`)
   - `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall (`shelf_A_big.gltf` is really a `2.0 × 0.4 × 0.5` wall shelf)
-  - `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf` (native size `2.0 × 1.0 × 2.0`)
+  - `"table"` → `table_medium_long.gltf` (native size `3.0 × 1.0 × 2.0`)
 - **Kenney Kitchen & Bathroom Fixtures (`*.glb`):**
-  - `"fridge"` → `fridge.glb` (native size `0.52 × 0.92 × 0.36`, multi-node with `doorLeft`/`doorRight`)
-  - `"sink"` → `sink_kitchen.glb` (`0.43 × 0.39 × 0.43`) / `sink_bathroom.glb` (`0.43 × 0.55 × 0.30`)
+  - `"fridge"` → `fridge.glb` (native size `0.52 × 0.92 × 0.41`, multi-node with `doorLeft`/`doorRight`)
+  - `"sink"` → `sink_kitchen.glb` (`0.43 × 0.49 × 0.45`), or `sink_bathroom.glb` (`0.43 × 0.58 × 0.30`) when a toilet or bath is within 3 m with no wall between them
   - `"toilet"` → `toilet.glb` (native size `0.31 × 0.45 × 0.48`, multi-node with `cover`)
-  - `"bath"` → `bathtub.glb` (native size `1.19 × 0.30 × 0.56`)
+  - `"bath"` → `bathtub.glb` (native size `1.19 × 0.42 × 0.56`)
 
 ### Sizing & Scale Normalization (Important)
 - **Opposite raw scales across the two asset packs:**
   - **KayKit `.gltf` models** are authored roughly **1.5–2× larger than real-world meters** (e.g., `bed_double_A.gltf` is `3.1 × 3.0` units and `couch.gltf` is `3.0 × 1.6` units).
   - **Kenney `.glb` fixture models** (`fridge.glb`, `sink_kitchen.glb`, `sink_bathroom.glb`, `toilet.glb`, `bathtub.glb`) are roughly **half real-world size** (e.g., `fridge.glb` is `0.92 m` tall as shipped) and have corner-anchored origins (`x` in `[-width, 0]`).
 - `lib/furniture.js` gives each type a real-world target box in meters. `viewer/Furniture.jsx` merges all mesh nodes in the loaded `.gltf`/`.glb` scene and fits the combined geometry to that box along each axis, centered in plan with its base flush on `y = floor * 2.7`.
-- All furniture is drawn in one basswood tone (`#c8b89f`, fixtures `#cfd4d8`) instead of the pack's texture, like the pieces in an architect's model.
+- Target boxes stay close to each model's own proportions, because stretching one much further makes it a lump. The wardrobe is the exception: neither pack has a tall cabinet, so `cabinet_medium.gltf` is raised to 2 m.
+- The Kenney models are authored facing `-Z`, so they get a half turn to match the `+Z` front everything else uses.
+- Each model keeps its own wood, fabric and porcelain colors, baked per vertex by `viewer/furnitureGeometry.js`, softened and pulled a little toward a warm wood tone so the two packs read as a set. Saturated blue stays with the cut tools.
+- The kitchen and bathroom fixtures take a finish from `viewer/fixtureFinishes.js`: ivory porcelain, brass taps, a cream fridge, an oak toilet lid, and a few things a home would have, such as towels and a pot plant.
+- Plans place a piece by its center, so `lib/settleFurniture.js` moves each one clear of walls, the stairs and other pieces when a model loads, and trims it by up to 30 percent if it still doesn't fit. Drawing, walking and escape routes all use the settled position.
 
 ## Validation and defaults
 

@@ -1,4 +1,4 @@
-# ArchiScan: Devpost submission kit
+# ArchiTech: Devpost submission kit
 
 Everything below is ready to paste into the Devpost form. Images are in this folder.
 
@@ -7,7 +7,7 @@ Everything below is ready to paste into the Devpost form. Images are in this fol
 ## Elevator pitch
 *(Devpost limit: 200 characters. This is 143.)*
 
-> Drop in a 2D floorplan image. ArchiScan uses Claude's vision to trace every wall and builds a 3D model you can orbit and slice open in section.
+> Drop in a 2D floorplan image. ArchiTech uses Claude's vision to trace every wall and builds a 3D model you can orbit and slice open in section.
 
 ---
 
@@ -29,14 +29,14 @@ We wanted that step to take seconds. Take a picture of a plan, from a listing, a
 
 ## What it does
 
-ArchiScan turns a 2D floorplan image into an interactive 3D model.
+ArchiTech turns a 2D floorplan image into an interactive 3D model.
 
 1. **Upload a plan.** Drag a PNG, JPEG, WebP, or GIF (up to 5 MB) onto the page, or click to browse.
 2. **Claude reads it.** The image goes to Claude Opus, which acts as an architectural parser. It finds every wall and returns its position, length, thickness, and angle in meters. Doors and windows come back as gaps in the walls.
 3. **Walk around it.** The walls rise out of the floor in a sweep across the plan, and the camera frames the model in the same orientation as your drawing. Drag to orbit and scroll to zoom.
 4. **Cut it open.** A section slider slices the model horizontally at any height. One click sets the cut to 1.2 m, the height architects use for a standard floor plan. Cut faces fill solid blue, the way a cut wall is drawn in an architectural section, so the layout reads at a glance.
 
-If something goes wrong (wrong file type, image too large, server down, or no walls found), ArchiScan says what happened and how to fix it.
+If something goes wrong (wrong file type, image too large, server down, or no walls found), ArchiTech says what happened and how to fix it.
 
 ## How we built it
 
@@ -86,7 +86,7 @@ We also wrote per-layer rule files and backlogs (`docs/`, `frontend/docs/`, `bac
 - 3D coordinate conventions bite. Image space, three.js space, and "rotation" all mean slightly different things until you pin them down in writing.
 - Long waits are a design problem. Showing people their own input being worked on makes a 60-second wait feel shorter than a spinner does.
 
-## What's next for ArchiScan
+## What's next for ArchiTech
 
 - **Real openings:** doors with headers and windows with sills, instead of full-height gaps.
 - **Scale calibration:** click a dimension on the plan to lock in the real-world scale.
@@ -139,9 +139,9 @@ The repository is private right now (it returns a 404 when signed out), so judge
 
 | Time | On screen | Say |
 |---|---|---|
-| 0:00–0:12 | Upload screen | "Floorplans are everywhere, but hard to picture in 3D. ArchiScan turns one into a model you can walk around." |
+| 0:00–0:12 | Upload screen | "Floorplans are everywhere, but hard to picture in 3D. ArchiTech turns one into a model you can walk around." |
 | 0:12–0:30 | Drag the floorplan in; scan overlay plays | "I'll drop in a plan. Claude Opus reads the image and traces every wall: position, length, thickness, angle, in meters." |
 | 0:30–0:50 | Walls rise; camera settles; orbit and zoom | "The walls rise straight out of the drawing, in the same orientation as the plan. I can orbit and zoom anywhere." |
-| 0:50–1:15 | Turn on Section cut; click Plan cut; drag the slider down slowly | "This is the section view. Architects draw plans as if the building were sliced at 1.2 m. ArchiScan does that live, and the cut walls fill in blue the way they would on a drawing." |
+| 0:50–1:15 | Turn on Section cut; click Plan cut; drag the slider down slowly | "This is the section view. Architects draw plans as if the building were sliced at 1.2 m. ArchiTech does that live, and the cut walls fill in blue the way they would on a drawing." |
 | 1:15–1:35 | Quick view of the architecture diagram or the JSON contract | "Under the hood: React Three Fiber on the front, Express on the back, and one shared wall format so both halves could be built in parallel." |
-| 1:35–1:50 | Click New upload; end on the model | "Next up: real door and window openings, scale calibration, and glTF export. That's ArchiScan." |
+| 1:35–1:50 | Click New upload; end on the model | "Next up: real door and window openings, scale calibration, and glTF export. That's ArchiTech." |

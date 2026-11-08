@@ -7,6 +7,7 @@ import { HERO_SIDE_BY_SIDE } from '../../lib/useHeroLayout'
 
 // Look from the image's bottom edge toward its top, slightly from the right.
 const VIEW_DIRECTION = new THREE.Vector3(0.3, 0.9, 1).normalize()
+const WIDE_PANEL_FROM = 1024
 // Low and turned for the landing page, so the building reads as a building, not a roof.
 const HERO_DIRECTION = new THREE.Vector3(0.75, 0.55, 1).normalize()
 // Steep enough to see the floor between plan-cut walls.
@@ -38,9 +39,10 @@ export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, act
     // Frame the space the interface leaves free, so the model stays visible while a slider is used.
     const hero = framing === 'hero'
     const heroBeside = hero && window.matchMedia(HERO_SIDE_BY_SIDE).matches
-    const availableWidth = heroBeside ? size.width * 0.5 : hero ? size.width - 16 : Math.max(120, size.width - (mobile ? 32 : 360))
+    const panelSpace = mobile ? 32 : framing !== 'report' ? 360 : size.width >= WIDE_PANEL_FROM ? 620 : 456
+    const availableWidth = heroBeside ? size.width * 0.5 : hero ? size.width - 16 : Math.max(120, size.width - panelSpace)
     const top = hero ? (mobile ? 64 : 72) : mobile ? 112 : Math.min(112, size.height * 0.18)
-    const bottom = heroBeside ? 32 : hero ? size.height * 0.52 : mobile ? size.height * 0.42 + 24 : 24
+    const bottom = heroBeside ? 32 : hero ? size.height * 0.52 : mobile ? size.height * (framing === 'report' ? 0.56 : 0.42) + 24 : 24
     const availableHeight = Math.max(100, size.height - top - bottom)
     const verticalFit = 2 * Math.atan(Math.tan(vertical / 2) * availableHeight / size.height)
     const horizontalFit = 2 * Math.atan(Math.tan(vertical / 2) * availableWidth / size.height)

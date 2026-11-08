@@ -5,6 +5,5 @@ export const CUT_TINT = '#cfe3ff'
 export const WALK_FLOOR = '#4a4d52'
 export const SLAB = '#6d7379'
 export const STRING = '#d5d1c8'
-// Furniture is one soft wood, as in an architect's model, so it reads as a set instead of as noise.
-export const FURNITURE = '#c8b89f'
-export const FIXTURE = '#cfd4d8'
+// Models lean a little toward this soft wood so they read as a set. Plain boxes use it until they load.
+export const FURNITURE = '#c6a579'

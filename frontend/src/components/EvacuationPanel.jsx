@@ -20,7 +20,7 @@ function PlaceRow({ kind, label, icon, iconClass, point, evacuation, names }) {
     placeInRoom(kind, floor, id)
   }
   return <div>
-    <label htmlFor={selectId} className="flex items-center gap-2 text-sm font-medium text-slate-100"><Icon name={icon} className={`size-4 ${iconClass}`} />{label}</label>
+    <label htmlFor={selectId} className="flex items-center gap-2 text-sm font-medium text-slate-100">{icon && <Icon name={icon} className={`size-4 ${iconClass}`} />}{label}</label>
     <div className="mt-1.5 grid grid-cols-[1fr_auto] gap-2">
       <select id={selectId} value={current ? `${current.floor}:${current.id}` : ''} onChange={change}
         className={`min-h-10 min-w-0 cursor-pointer rounded-lg bg-black/30 px-2 text-sm text-slate-100 pointer-coarse:min-h-11 ${focusRing}`}>
@@ -117,7 +117,7 @@ export default function EvacuationPanel({ evacuation, previews, floors, onResetV
     {floors > 1 && <Segmented legend="Floor on show" name="escape-floor" options={floorOptions(floors)} value={floor} onChange={setFloor} />}
     <div className="space-y-3">
       <PlaceRow kind="fire" label="Fire" icon="flame" iconClass="text-orange-400" point={fire} evacuation={evacuation} names={names} />
-      <PlaceRow kind="person" label="You" icon="person" iconClass="text-slate-100" point={person} evacuation={evacuation} names={names} />
+      <PlaceRow kind="person" label="You" point={person} evacuation={evacuation} names={names} />
     </div>
     {placing && <p className="text-sm font-medium text-slate-100">{prompt}</p>}
     {notice && <p role="alert" className="text-sm text-orange-200">{notice}</p>}
@@ -132,7 +132,7 @@ export default function EvacuationPanel({ evacuation, previews, floors, onResetV
     </div>}
     <p className="text-[13px] leading-5 text-slate-400">A planning aid, not a certified escape plan. It only knows what the floor plan shows.</p>
     <div className="-mt-2 grid grid-cols-2 gap-2">
-      <Button variant="quiet" onClick={clear} disabled={!fire && !person}><Icon name="reset" className="size-3.5" />Start over</Button>
+      <Button variant="quiet" onClick={clear} disabled={!fire && !person}>Start over</Button>
       <Button variant="quiet" onClick={onResetView}>Reset camera</Button>
     </div>
     <p className="sr-only" role="status">{announcement}</p>
