@@ -54,7 +54,7 @@ To initialize the workspace for all contributors, run the following commands in 
 To ensure seamless operation between the two layers:
 *   **CORS:** The backend must be configured with a CORS policy that explicitly allows requests from the frontend's local development port (usually `http://localhost:5173`).
 *   **API Contract:** The frontend will send a `POST` request to `/api/parse-blueprint` containing either a single Base64 image (`{ image, mediaType }`) or an ordered array of floor images (`{ images: [{ image, mediaType }, ...] }`).
-*   **Data Format:** The backend must return a strict JSON array of objects representing walls, windows, and doors across all floors: `[{ "type": "wall" | "window" | "door", "floor": int, "x": float, "z": float, "width": float, "depth": float, "rotation": float, "sillHeight"?: float, "height"?: float }]`.
+*   **Data Format:** The backend must return a strict JSON array of objects representing structural elements (`wall`, `window`, `door`, `stairs`) and furniture (`couch`, `chair`, `fridge`, `sink`, `bed`, `wardrobe`, `cabinet`, `toilet`, `table`, `bath`) across all floors.
 *   **Environment Variables:** The frontend will use `VITE_API_URL=http://localhost:3000` to locate the backend. The backend will use `ANTHROPIC_API_KEY` to securely communicate with Claude.
 
 ## 5. Authoritative Contract (single source of truth)
@@ -73,10 +73,15 @@ Detailed plans: [frontend_plan.md](frontend_plan.md) and [backend_plan.md](backe
 [
   { "type": "wall", "floor": 0, "x": 0.95, "z": 0.12, "width": 1.9, "depth": 0.24, "rotation": 0 },
   { "type": "window", "floor": 0, "x": 2.9, "z": 0.12, "width": 2.0, "depth": 0.24, "rotation": 0, "sillHeight": 0.9, "height": 1.2 },
-  { "type": "door", "floor": 1, "x": 6.0, "z": 0.12, "width": 0.9, "depth": 0.24, "rotation": 0, "sillHeight": 0, "height": 2.1 }
+  { "type": "door", "floor": 1, "x": 6.0, "z": 0.12, "width": 0.9, "depth": 0.24, "rotation": 0, "sillHeight": 0, "height": 2.1 },
+  { "type": "stairs", "floor": 0, "x": 11.45, "z": 5.8, "width": 3.4, "depth": 1.1, "rotation": 3.142 },
+  { "type": "couch", "floor": 0, "x": 2.4, "z": 3.1, "rotation": 1.571 }
 ]
 ```
-*   `type`: `"wall" | "window" | "door"` (defaults to `"wall"` if omitted for backwards compatibility).
+*   `type`:
+    *   Walls/Windows/Doors: `"wall" | "window" | "door"` (defaults to `"wall"` if omitted for backwards compatibility). Includes `width`, `depth`, and `rotation` in `[0, PI)`.
+    *   Stairs: `"stairs"`. Emitted only on the lower floor from which the staircase ascends (`UP`); `"DN"` stairs on upper floors are ignored to avoid duplicating the staircase in the same shaft. Includes `width` (stair run length along direction of travel), `depth` (tread width), and `rotation` in `[0, 2*PI)` indicating the ascending (`UP`) direction (`0` = `+Z`/down, `PI/2` = `+X`/right, `PI` = `-Z`/up, `3*PI/2` = `-X`/left).
+    *   Furniture: `"couch" | "chair" | "fridge" | "sink" | "bed" | "wardrobe" | "cabinet" | "toilet" | "table" | "bath"`. Uses fixed-size 3D models on the frontend, so `width` and `depth` are omitted; `rotation` is in `[0, 2*PI)` indicating the direction the front of the item faces (`0` = `+Z`/down, `PI/2` = `+X`/right, `PI` = `-Z`/up, `3*PI/2` = `-X`/left).
 *   `floor`: non-negative integer (`0` = ground floor, `1` = second floor, etc.; defaults to `0` if omitted for backwards compatibility).
 *   `sillHeight` and `height` (meters): included on `"window"` (default `0.9` / `1.2`) and `"door"` (default `0` / `2.1`). Full wall height per floor is a frontend constant of `2.7` m.
 
