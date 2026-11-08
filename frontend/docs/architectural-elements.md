@@ -1,6 +1,6 @@
 # Typed architectural elements
 
-The saved backend sample and live API now return a bare array of `wall`, `window`, and `door` elements. The current apartment contains 27 elements: 17 walls, 6 windows, and 4 doors. The frontend imports the saved JSON directly and preserves its coordinates, dimensions, radians, sill heights, and opening heights.
+The saved backend sample and live API now return a bare array of `wall`, `window`, and `door` elements. The legacy apartment sample contains 27 elements: 17 walls, 6 windows, and 4 doors. The frontend imports the saved JSON directly and preserves its coordinates, dimensions, radians, sill heights, and opening heights.
 
 ## Geometry
 
@@ -36,3 +36,5 @@ The model summary reports wall, window, and door counts separately. The optional
 Nine added unit tests cover typed validation, opening defaults/clamping, window/door components, custom sill/height values, rotation, backwards compatibility, raised-prism volume, and caps that respect apertures. The geometry suite now contains 29 passing tests.
 
 Focused browser checks inspect the real meshes/materials, review whole-model and window/door close-up screenshots, select and cut one window while preserving other elements, partition a window with a direct area cut, exercise the typed live API response path, and verify legacy/error responses. Existing direct-selection, mobile-touch, and upload/cutting regression suites remain covered.
+
+The default demo now uses the 80-element two-floor house. Each element is rendered at `(floor ?? 0) * 2.7` m, with window/door dimensions relative to that base. See `multi-floor.md`.

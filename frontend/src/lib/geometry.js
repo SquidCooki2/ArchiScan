@@ -38,6 +38,7 @@ export function validateWalls(walls) {
   if (!Array.isArray(walls) || !walls.length) throw new Error('No walls were found. Try a clearer floorplan image.')
   if (!walls.every(w => {
     if (!w || !ELEMENT_TYPES.includes(w.type === undefined ? 'wall' : w.type) || !['x', 'z', 'width', 'depth', 'rotation'].every(key => Number.isFinite(w[key])) || w.width <= 0 || w.depth <= 0 || w.rotation < 0 || w.rotation >= Math.PI) return false
+    if (w.floor !== undefined && (!Number.isSafeInteger(w.floor) || w.floor < 0 || !Number.isFinite((w.floor + 1) * WALL_HEIGHT))) return false
     if (elementType(w) === 'wall') return true
     if (w.sillHeight !== undefined && !Number.isFinite(w.sillHeight)) return false
     const { sillHeight, height } = openingDimensions(w)

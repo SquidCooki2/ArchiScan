@@ -54,3 +54,7 @@ The backend's coordinates, radians, wall dimensions, image orientation, lighting
 Twenty-nine geometry tests cover the shared contract and bounds, plane signs, exact area partitions, watertight winding/volume, cap intersections, free selection bounds, movement/resizing constraints, and local slider ranges.
 
 Browser checks cover direct 3D drawing, two-corner selection, visible highlighting, all three draggable cut axes, local geometry isolation, move/resize handles, Escape rollback, clearing/reset, normal orbit restoration, and mobile two-tap/drag behavior. The original upload/API/error checks and the whole-model/wall/optional-plan cutting checks remain covered. See `verification.md` for results and the remaining live-Claude integration step.
+
+## Multiple floors
+
+Choose the target using **View floor** before drawing or editing. Regions, selected elements, and cut configuration persist independently for every floor. Cut heights are relative to the selected floor; the 3D handles and clipping planes use its world elevation. **Entire building** shows the saved cuts on all floors. See `multi-floor.md`.

@@ -8,7 +8,7 @@ import { WALL_HEIGHT } from '../../lib/geometry'
 const VIEW_DIRECTION = new THREE.Vector3(0.3, 0.9, 1).normalize()
 
 /** Fit across aspect ratios; user interaction cancels the camera glide. */
-export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, active = true }) {
+export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, panelOpen = true, active = true }) {
   const get = useThree(state => state.get)
   const controls = useThree(state => state.controls)
   const size = useThree(state => state.size)
@@ -31,11 +31,11 @@ export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, act
     // Framing the actual free space keeps the model visible while a slider is used.
     const availableWidth = hasModel ? Math.max(120, size.width - (mobile ? 32 : 360)) : size.width
     const top = hasModel ? Math.min(230, size.height * 0.3) : 0
-    const bottom = hasModel && mobile ? size.height * 0.42 + 24 : 24
+    const bottom = hasModel && mobile ? (panelOpen ? size.height * 0.42 + 24 : 140) : 24
     const availableHeight = Math.max(100, size.height - top - bottom)
     const verticalFit = 2 * Math.atan(Math.tan(vertical / 2) * availableHeight / size.height)
     const horizontalFit = 2 * Math.atan(Math.tan(vertical / 2) * availableWidth / size.height)
-    const radius = Math.hypot(bounds.width, bounds.depth, WALL_HEIGHT) / 2
+    const radius = Math.hypot(bounds.width, bounds.depth, bounds.height ?? WALL_HEIGHT) / 2
     const distance = radius / Math.sin(Math.min(verticalFit, horizontalFit) / 2) * 1.15
     if (hasModel) {
       const centerX = mobile ? size.width / 2 : availableWidth / 2 + 8
@@ -44,7 +44,7 @@ export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, act
     } else {
       camera.clearViewOffset()
     }
-    const target = new THREE.Vector3(0, WALL_HEIGHT / 2, 0)
+    const target = new THREE.Vector3(0, ((bounds.minY ?? 0) + (bounds.maxY ?? WALL_HEIGHT)) / 2, 0)
     const position = target.clone().addScaledVector(VIEW_DIRECTION, distance)
     camera.near = Math.max(0.01, distance / 1000)
     camera.far = Math.max(200, distance * 12)
@@ -62,7 +62,7 @@ export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, act
     const cancel = () => { goal.current = null }
     controls.addEventListener('start', cancel)
     return () => controls.removeEventListener('start', cancel)
-  }, [get, controls, bounds, fitKey, reducedMotion, hasModel, active, size.width, size.height])
+  }, [get, controls, bounds, fitKey, reducedMotion, hasModel, panelOpen, active, size.width, size.height])
 
   useFrame((_, delta) => {
     const g = goal.current
