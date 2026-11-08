@@ -33,7 +33,7 @@ const MIN_PIECE_SIZE = 0.8 // m; thinner strips are skipped
 const MAX_PIECES = 12
 
 /** Weighted mean wall direction, folded into a 90° period. Returns radians in (-π/4, π/4]. */
-function dominantAngle(elements) {
+export function dominantAngle(elements) {
   let c = 0
   let s = 0
   for (const e of elements) {
@@ -76,7 +76,7 @@ function frameBounds(items, pad = 0) {
 }
 
 /** Separable square erosion: a cell survives if every cell within k (Chebyshev) is set. */
-function erode(mask, nu, nv, k) {
+export function erode(mask, nu, nv, k) {
   const tmp = new Uint8Array(mask.length)
   const out = new Uint8Array(mask.length)
   const span = 2 * k + 1
@@ -103,12 +103,12 @@ function erode(mask, nu, nv, k) {
 }
 
 /** Footprint mask in the rotated frame, or null if the outline isn't closed. */
-export function rasterizeFootprint(items) {
+export function rasterizeFootprint(items, finest = CELL) {
   const pad = CLOSE_RADIUS + 3 * CELL
   const b = frameBounds(items, 0)
   const spanU = b.maxU - b.minU + 2 * pad
   const spanV = b.maxV - b.minV + 2 * pad
-  const cell = Math.max(CELL, Math.sqrt((spanU * spanV) / MAX_CELLS))
+  const cell = Math.max(finest, Math.sqrt((spanU * spanV) / MAX_CELLS))
   const nu = Math.ceil(spanU / cell)
   const nv = Math.ceil(spanV / cell)
   const originU = b.minU - pad

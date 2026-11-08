@@ -221,3 +221,14 @@ Smoothness itself wasn't measured. The headless browser draws the 3D scene in so
 - All four tabs opened without errors on a plan with no drawing. That only checks they don't crash: routes and walking weren't run through on it, though neither depends on the drawing.
 
 Not tested: a real file picker (the checks set the input's files from script), Safari, and Firefox. The backend's checks also accept alternative type names such as `sofa` and numbers written as strings. A JSON file doesn't get that leniency, so hand-written files need the exact format.
+
+## Lawn and floors that follow the walls
+
+`npm test` passes 167 frontend tests. Lint and the production build are clean. These checks ran in the real app on an L-shaped test plan and the two-floor sample, with no page errors.
+
+- On the L-shaped plan, the missing corner shows grass from above and with **See floor plan**, and the wood stays inside the rooms. Tests confirm each edge of the floor lands within the wall above it.
+- Tests cover a rotated L, two separate buildings, walls that don't close, stairwells inside the outline, a stairwell running past it, and every floor of both samples. Both samples are plain rectangles, so they look the same apart from the lawn. Tracing took 2 to 8 ms per floor.
+- The landing page, Explore, and picking a walk's start show the lawn. The Escape route tab leaves it out and keeps its dark ground.
+- While walking, the floor and ceiling look right inside.
+
+Not confirmed: the view of the lawn through a window while walking. The test browser draws only a few frames per second, and turning with the keys never brought a window into view. It also couldn't be checked at every angle that the landing page's turning lawn stays clear of the text. The grass color was judged on software rendering, so it's worth a look on a real graphics card. Safari and Firefox weren't tested.

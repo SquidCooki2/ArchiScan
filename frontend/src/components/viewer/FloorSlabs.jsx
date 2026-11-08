@@ -1,5 +1,6 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
+import { floorOutlines } from '../../lib/footprint'
 import { computeBounds, elementFloor, floorBase, floorCount, isFurniture, isStairs, stairwellCorners, WALL_HEIGHT } from '../../lib/geometry'
 import { CARD, SLAB } from './colors'
 import { surfaces } from './surfaces'
@@ -10,7 +11,7 @@ const THICKNESS = 0.1
 const INSET = 0.02
 const LIFT = 0.006
 
-/** A rectangle in plan as a shape's outline. Shape Y is plan -Z, because the shape lies down later. */
+/** Points in plan as a shape's outline. Shape Y is plan -Z, because the shape lies down later. */
 function outline(Path, corners) {
   const path = new Path()
   corners.forEach(([x, z], index) => (index ? path.lineTo(x, -z) : path.moveTo(x, -z)))
@@ -18,15 +19,21 @@ function outline(Path, corners) {
   return path
 }
 
-function slabShape(area, stairs) {
+/** The floor's real outline. Walls that don't close into a building fall back to their bounding rectangle. */
+function slabOutlines(elements, area, stairwells) {
   const { minX, maxX, minZ, maxZ } = area
-  const shape = outline(THREE.Shape, [[minX + INSET, minZ + INSET], [maxX - INSET, minZ + INSET], [maxX - INSET, maxZ - INSET], [minX + INSET, maxZ - INSET]])
-  shape.holes = stairs.map(stair => outline(THREE.Path, stairwellCorners(stair, area, INSET * 2)))
+  return floorOutlines(elements, stairwells)
+    ?? [{ outer: [[minX + INSET, minZ + INSET], [maxX - INSET, minZ + INSET], [maxX - INSET, maxZ - INSET], [minX + INSET, maxZ - INSET]], holes: stairwells }]
+}
+
+const toShape = ({ outer, holes }) => {
+  const shape = outline(THREE.Shape, outer)
+  shape.holes = holes.map(hole => outline(THREE.Path, hole))
   return shape
 }
 
 /**
- * A thin floor under each storey, sized to it, so rooms read as rooms against the white walls, with
+ * A thin floor under each storey, following its exterior walls so the lawn shows outside them, with
  * an opening wherever a flight arrives from below. While walking, each also gets a white ceiling.
  * Floors are oak boards, except for escape routes: their glowing arrows need a plain, dark surface, so
  * those leave out the ground slab and keep upper ones plain.
@@ -40,16 +47,21 @@ export default function FloorSlabs({ walls, bounds, section, cut, region, visibl
       const elements = walls.filter(element => elementFloor(element) === floor && !isFurniture(element))
       if (!elements.length) continue
       const area = computeBounds(elements)
-      const shape = slabShape(area, flights.filter(stair => elementFloor(stair) + 1 === floor))
-      const solid = new THREE.ExtrudeGeometry(shape, { depth: THICKNESS, bevelEnabled: false })
+      const stairwells = flights.filter(stair => elementFloor(stair) + 1 === floor).map(stair => stairwellCorners(stair, area, INSET * 2))
+      const outlines = slabOutlines(elements, area, stairwells)
+      const shapes = outlines.map(toShape)
+      const solid = new THREE.ExtrudeGeometry(shapes, { depth: THICKNESS, bevelEnabled: false })
       solid.rotateX(-Math.PI / 2)
-      const underside = new THREE.ShapeGeometry(shape)
+      const underside = new THREE.ShapeGeometry(shapes)
       underside.rotateX(-Math.PI / 2)
-      result.push({ floor, solid, underside, area })
+      // The top of the house has no stairwell to leave open.
+      const cover = new THREE.ShapeGeometry(outlines.map(({ outer }) => outline(THREE.Shape, outer)))
+      cover.rotateX(-Math.PI / 2)
+      result.push({ floor, solid, underside, cover })
     }
     return result
   }, [walls, floors])
-  useEffect(() => () => slabs.forEach(({ solid, underside }) => { solid.dispose(); underside.dispose() }), [slabs])
+  useEffect(() => () => slabs.forEach(({ solid, underside, cover }) => { solid.dispose(); underside.dispose(); cover.dispose() }), [slabs])
   const planes = useSectionClipping(bounds, section, cut, region)
   const material = useMemo(() => new THREE.MeshStandardMaterial({ ...(boards ? { map: surfaces().planks, roughness: 0.7 } : { color: SLAB, roughness: 0.95 }), clippingPlanes: planes, clipIntersection: true }), [planes, boards])
   const ceiling = useMemo(() => new THREE.MeshStandardMaterial({ color: CARD, roughness: 1, side: THREE.DoubleSide }), [])
@@ -61,6 +73,6 @@ export default function FloorSlabs({ walls, bounds, section, cut, region, visibl
       <mesh name={`floor-slab-${floor}`} geometry={solid} material={material} receiveShadow position-y={floorBase(floor) + LIFT - THICKNESS} />
       {walking && floor > 0 && <mesh name={`ceiling-${floor}`} geometry={underside} material={ceiling} position-y={floorBase(floor) + LIFT - THICKNESS - 0.002} />}
     </group>)}
-    {top.map(({ floor, area }) => <mesh key={floor} name="top-ceiling" material={ceiling} rotation-x={Math.PI / 2} position={[area.cx, floorBase(floor) + WALL_HEIGHT, area.cz]}><planeGeometry args={[area.width, area.depth]} /></mesh>)}
+    {top.map(({ floor, cover }) => <mesh key={floor} name="top-ceiling" geometry={cover} material={ceiling} position-y={floorBase(floor) + WALL_HEIGHT} />)}
   </group>
 }

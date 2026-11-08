@@ -23,5 +23,6 @@
 - [x] Task 19: Shortened the BoM panel into folding sections at the usual panel width. Added estimated prices to the panel and exports.
 - [x] Task 20: Clicking the plan thumbnail grows it into a large view, and closing shrinks it back to the same spot.
 - [x] Task 21: Upload or drop a plan saved as JSON to open it in the browser without the backend. Files from the Export menu bring back their name and roof.
+- [x] Task 22: Grass around the house. Floors follow the exterior walls instead of the plan's bounding rectangle, so the land outside them is lawn rather than wood.
 
 See `verification.md` for checks and limitations, `section-view.md` for cuts, `human-perspective.md` for walking, and `architectural-elements.md` for windows and doors.
