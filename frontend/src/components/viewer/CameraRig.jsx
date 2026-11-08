@@ -3,6 +3,7 @@ import { useFrame, useThree } from '@react-three/fiber'
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import * as THREE from 'three'
 import { WALL_HEIGHT } from '../../lib/geometry'
+import { HERO_SIDE_BY_SIDE } from '../../lib/useHeroLayout'
 
 // Look from the image's bottom edge toward its top, slightly from the right.
 const VIEW_DIRECTION = new THREE.Vector3(0.3, 0.9, 1).normalize()
@@ -36,16 +37,17 @@ export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, act
     const mobile = size.width < 640
     // Frame the space the interface leaves free, so the model stays visible while a slider is used.
     const hero = framing === 'hero'
-    const availableWidth = hero ? (mobile ? size.width - 16 : size.width * 0.56) : Math.max(120, size.width - (mobile ? 32 : 360))
+    const heroBeside = hero && window.matchMedia(HERO_SIDE_BY_SIDE).matches
+    const availableWidth = heroBeside ? size.width * 0.5 : hero ? size.width - 16 : Math.max(120, size.width - (mobile ? 32 : 360))
     const top = hero ? (mobile ? 64 : 72) : mobile ? 112 : Math.min(112, size.height * 0.18)
-    const bottom = hero ? (mobile ? size.height * 0.52 : 32) : mobile ? size.height * 0.42 + 24 : 24
+    const bottom = heroBeside ? 32 : hero ? size.height * 0.52 : mobile ? size.height * 0.42 + 24 : 24
     const availableHeight = Math.max(100, size.height - top - bottom)
     const verticalFit = 2 * Math.atan(Math.tan(vertical / 2) * availableHeight / size.height)
     const horizontalFit = 2 * Math.atan(Math.tan(vertical / 2) * availableWidth / size.height)
     const radius = Math.hypot(bounds.width, bounds.depth, fitHeight.current) / 2
     const distance = radius / Math.sin(Math.min(verticalFit, horizontalFit) / 2) * 1.15
     if (hasModel) {
-      const centerX = mobile ? size.width / 2 : hero ? size.width * 0.69 : availableWidth / 2 + 8
+      const centerX = heroBeside ? size.width * 0.72 : hero || mobile ? size.width / 2 : availableWidth / 2 + 8
       const centerY = top + availableHeight / 2
       camera.setViewOffset(size.width, size.height, size.width / 2 - centerX, size.height / 2 - centerY, size.width, size.height)
     } else {
