@@ -15,9 +15,9 @@ function loadConfig(env = process.env) {
 
   return Object.freeze({
     port,
-    anthropicApiKey: env.ANTHROPIC_API_KEY,
-    anthropicModel: env.ANTHROPIC_MODEL,
-    corsOrigin: env.CORS_ORIGIN || 'http://localhost:5173',
+    anthropicApiKey: env.ANTHROPIC_API_KEY.trim(),
+    anthropicModel: env.ANTHROPIC_MODEL.trim(),
+    corsOrigin: (env.CORS_ORIGIN || 'http://localhost:5173').trim(),
     maxImageBytes,
   });
 }
