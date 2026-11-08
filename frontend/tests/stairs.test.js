@@ -4,7 +4,7 @@ import { test } from 'node:test'
 import { elementParts, STAIR_STEPS, structuralElements } from '../src/lib/elementParts.js'
 import { buildEvacuationBuilding, computeFireFields, HAZARD_RADIUS, planEscape, roomAt, samplePath } from '../src/lib/evacuation.js'
 import { computeBounds, stairRect, stairwellCorners, validateWalls, WALL_HEIGHT } from '../src/lib/geometry.js'
-import { buildWalkBuilding, EYE_HEIGHT, placementAt, walkHeight, walkStep } from '../src/lib/walkthrough.js'
+import { buildWalkBuilding, EYE_HEIGHT, placementAt, stairHint, walkHeight, walkStep } from '../src/lib/walkthrough.js'
 
 const house = JSON.parse(readFileSync(new URL('../../sample_output/house1_2floors.walls.json', import.meta.url)))
 const stair = house.find(element => element.type === 'stairs')
@@ -39,8 +39,26 @@ test('a guard around the stairwell stands on the upper floor, open at the head o
   assert.equal(guards[0].floor, 1)
   const parts = elementParts(guards[0]).filter(part => part.role === 'string')
   assert.equal(parts.length, 3)
-  assert.ok(parts.every(part => part.z >= stair.z - 0.01), 'nothing across the head of the flight')
+  const rails = elementParts(guards[0]).filter(part => part.role === 'rail')
+  const head = stair.z - stair.width / 2
+  assert.ok([...parts, ...rails].every(part => part.depth > part.width ? true : Math.abs(part.z - head) > 0.03 || Math.abs(part.x - stair.x) > stair.depth / 2 - 0.1), 'nothing across the head of the flight')
   assert.equal(structuralElements(house).filter(element => ['couch', 'bed'].includes(element.type)).length, 0)
+})
+
+test('stairs have a handrail on posts and no glass, following the pitch of the flight', () => {
+  for (const element of [stair, ...structuralElements(house).filter(item => item.type === 'stairGuard')]) {
+    const parts = elementParts(element)
+    assert.equal(parts.some(part => part.role === 'glass'), false)
+    assert.ok(parts.filter(part => part.role === 'rail').length > 2)
+  }
+  const [bar] = elementParts(stair).filter(part => part.role === 'rail' && part.slope)
+  close(bar.slope, WALL_HEIGHT / stair.width)
+  // A hand on the rail sits the same height above every step it passes.
+  const treads = elementParts(stair).filter(part => part.role === 'wall')
+  const barHeightAt = tread => (bar.bottom + bar.top) / 2 + bar.slope * ((tread.x - bar.x) * Math.cos(bar.rotation) + (tread.z - bar.z) * Math.sin(bar.rotation))
+  const above = treads.slice(6).map(tread => barHeightAt(tread) - tread.top)
+  above.forEach(height => close(height, above[0], 0.1))
+  assert.ok(above[0] > 0.8 && above[0] < 1.1, `${above[0]} m above the step`)
 })
 
 test('the stairwell opening matches the flight and stays inside the slab', () => {
@@ -110,6 +128,43 @@ test('the lowest steps are open at the side, so a flight landing against a wall 
   const { position, heights } = walk(walking, FOOT, offToTheSide, 4)
   close(position.x, offToTheSide.x, 0.03)
   assert.equal(heights.at(-1), 0)
+})
+
+const heading = (x, z) => ({ x: x * 1.4 / 30, z: z * 1.4 / 30 })
+
+// This flight stands right against an outside wall on its +X side, so these all start clear of that.
+for (const [start, lean] of [[-0.4, -1], [-0.2, 1], [0.2, 1], [0.2, -1]]) {
+  test(`walking at a flight 30 degrees off its line climbs it (${start} m from the middle, leaning ${lean})`, () => {
+    let position = local(stair.x + start, stair.z + stair.width / 2 + 0.05, 0)
+    assert.equal(placementAt(position, walking.floors[0]).valid, true)
+    for (let t = 0; t < 7; t += 1 / 30) position = walkStep(position, heading(lean * Math.sin(Math.PI / 6), -Math.cos(Math.PI / 6)), walking)
+    assert.equal(position.floor, 1, 'reached the upper floor')
+    assert.equal(walkHeight(position, walking), WALL_HEIGHT)
+  })
+
+  test(`coming down 30 degrees off its line goes down the flight (${start} m from the middle, leaning ${lean})`, () => {
+    let position = local(stair.x + start, stair.z - stair.width / 2 - 0.2, 1)
+    assert.equal(placementAt(position, walking.floors[1]).valid, true)
+    for (let t = 0; t < 7; t += 1 / 30) position = walkStep(position, heading(lean * Math.sin(Math.PI / 6), Math.cos(Math.PI / 6)), walking)
+    assert.equal(position.floor, 0, 'reached the lower floor')
+    assert.equal(walkHeight(position, walking), 0)
+  })
+}
+
+test('walls beside a flight never hold anyone on it', () => {
+  const tight = [...house, { type: 'wall', floor: 1, x: stair.x + stair.depth / 2 + 0.02, z: stair.z, width: stair.width, depth: 0.2, rotation: Math.PI / 2 },
+    { type: 'wall', floor: 0, x: stair.x - stair.depth / 2 - 0.02, z: stair.z, width: stair.width, depth: 0.2, rotation: Math.PI / 2 }]
+  const { position } = walk(buildWalkBuilding(tight, bounds), FOOT, HEAD)
+  assert.equal(position.floor, 1)
+  close(position.z, HEAD.z, 0.03)
+})
+
+test('a hint says which way a nearby flight goes, and is quiet elsewhere', () => {
+  assert.deepEqual(stairHint(FOOT, walking), { direction: 'up', floor: 1 })
+  assert.deepEqual(stairHint(HEAD, walking), { direction: 'down', floor: 0 })
+  assert.equal(stairHint(local(stair.x - 3, stair.z, 0), walking), null)
+  // Once on the flight the way ahead is plain, and "down" halfway up would only confuse.
+  assert.equal(stairHint(local(stair.x, stair.z - 0.5, 1), walking), null)
 })
 
 test('furniture blocks walking, chairs included', () => {

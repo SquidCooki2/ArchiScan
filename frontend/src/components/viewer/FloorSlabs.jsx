@@ -1,7 +1,8 @@
 import { useEffect, useMemo } from 'react'
 import * as THREE from 'three'
 import { computeBounds, elementFloor, floorBase, floorCount, isFurniture, isStairs, stairwellCorners, WALL_HEIGHT } from '../../lib/geometry'
-import { CARD, SLAB, WALK_FLOOR } from './colors'
+import { CARD, SLAB } from './colors'
+import { surfaces } from './surfaces'
 import { useSectionClipping } from './useSectionClipping'
 
 const THICKNESS = 0.1
@@ -27,9 +28,10 @@ function slabShape(area, stairs) {
 /**
  * A thin floor under each storey, sized to it, so rooms read as rooms against the white walls, with
  * an opening wherever a flight arrives from below. While walking, each also gets a white ceiling.
- * Escape routes leave out the ground slab: their glowing arrows need the dark table.
+ * Floors are oak boards, except for escape routes: their glowing arrows need a plain, dark surface, so
+ * those leave out the ground slab and keep upper ones plain.
  */
-export default function FloorSlabs({ walls, bounds, section, cut, region, visibleFloor, ground = true, walking = false }) {
+export default function FloorSlabs({ walls, bounds, section, cut, region, visibleFloor, ground = true, walking = false, boards = true }) {
   const floors = floorCount(walls)
   const slabs = useMemo(() => {
     const flights = walls.filter(isStairs)
@@ -49,7 +51,7 @@ export default function FloorSlabs({ walls, bounds, section, cut, region, visibl
   }, [walls, floors])
   useEffect(() => () => slabs.forEach(({ solid, underside }) => { solid.dispose(); underside.dispose() }), [slabs])
   const planes = useSectionClipping(bounds, section, cut, region)
-  const material = useMemo(() => new THREE.MeshStandardMaterial({ color: walking ? WALK_FLOOR : SLAB, roughness: 0.95, clippingPlanes: planes, clipIntersection: true }), [planes, walking])
+  const material = useMemo(() => new THREE.MeshStandardMaterial({ ...(boards ? { map: surfaces().planks, roughness: 0.7 } : { color: SLAB, roughness: 0.95 }), clippingPlanes: planes, clipIntersection: true }), [planes, boards])
   const ceiling = useMemo(() => new THREE.MeshStandardMaterial({ color: CARD, roughness: 1, side: THREE.DoubleSide }), [])
   useEffect(() => () => material.dispose(), [material])
   useEffect(() => () => ceiling.dispose(), [ceiling])

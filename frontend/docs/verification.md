@@ -159,3 +159,27 @@ The AI explanation ran through the real frontend and backend route against a stu
 The touch-only wording and on-screen arrows weren't exercised with real touch input. The only console message is a `THREE.Clock` deprecation warning from the pinned three.js version.
 
 Two floor images were also uploaded through the real frontend and backend route against a stubbed model. Neither that path nor the AI explanation has run against the live Claude API (Task 11).
+
+## Fixtures, furniture look, stairs, and first-person walking
+
+`npm test` passes 102 frontend tests and `npm test` in `backend/` passes 17. Lint and the production build are clean. Headless Chrome checks at 1440 × 900 and 390 × 844, on both saved samples:
+
+- All 10 furniture types draw from their models with their own colors, on both floors of the house and in the apartment. Tests load the Kenney `.glb` files and check that every node merges, the result stands on the floor, centered, at its target size, and that the fixtures face `+Z`.
+- A sink next to a toilet or bath draws as a basin, and a kitchen sink as a kitchen unit. A cut goes through furniture along with the walls.
+- Stairs have a handrail on posts and no glass. Walking at a flight 30 degrees off its line climbs it from either side, comes down the same way, and is not held by walls beside it. The sample house's flight stands against an outside wall, which is the case that used to catch people.
+- Starting a walk with a real click captures the pointer and hides the switch and panel. Moving the mouse turns the view, and W climbs the flight to Floor 2. Releasing the capture brings the panel back without leaving the walk, a click captures again, and a second Esc leaves.
+- With touch emulation on the narrow screen, the arrows show, the pointer isn't captured, a drag turns the view, and there's no horizontal scroll or text under 12 px.
+
+Pointer lock ran in headless Chrome with focus emulated, and the release was triggered from script, because automation can't press the browser's own Esc. The real Esc key, a physical mouse, Safari, Firefox, and real touch input still need a try by hand.
+
+## Homely finish, bill of materials, and export
+
+`npm test` passes 137 frontend tests and `npm test` in `backend/` passes 17. Lint and the production build are clean. Headless Chrome checks ran at 1440 × 900, 820 × 1100, and 390 × 844 on both samples, with no horizontal scroll, no text under 12 px, and no console errors.
+
+- The header shows a text wordmark. Tabs, roof choices, and cut buttons have no icons. New plan, the upload button, and the fire keep theirs.
+- Furniture is settled clear of walls, the stairs, and other pieces in both samples, and routes and walking still work around it.
+- Plaster, siding, planks, and shingles show in Explore, Walk, and the cuts, and escape mode keeps a plain floor with readable arrows. Zoomed captures show no seam lines on the siding.
+- BoM totals were checked by hand against the sample house: 83.6 m of exterior wall is its 41.8 m perimeter on two floors, 212 m² gross matches 12.2 × 8.7 m twice, and the roof's slope area matches its 12.8 × 9.3 m plan over the cosine of 30 degrees. Tests confirm floors add up to the whole and schedules count every opening.
+- All three exports downloaded from the real button. ezdxf 1.x read the DXF as valid R12 with 0 audit errors and closed outlines on the expected layers.
+
+The DXF and CSV haven't been opened in AutoCAD, Revit, or Excel themselves. Assumed BoM rows use typical rules of thumb and haven't been reviewed by an estimator, and the checks are a first look against remembered 2021 IRC figures, not a code review. Depth precision relies on a logarithmic depth buffer, tested in headless Chrome's software renderer, not on a range of real graphics cards.

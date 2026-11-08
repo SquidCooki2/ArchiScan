@@ -1,4 +1,4 @@
-# ArchiScan frontend
+# ArchiTech frontend
 
 React 19 / Vite / Tailwind v4 / React Three Fiber. Turns the shared wall-array contract into a 3D model you can cut open, walk through, and plan an escape route in.
 
@@ -35,10 +35,16 @@ Environment values are embedded at build time. Set `VITE_API_URL` before `npm ru
 The switch at the top chooses what you're doing with the model.
 
 - **Explore:** drag to orbit, scroll or pinch to zoom, right-drag to pan. Choose a floor and a roof, move **Cut height**, or press **See floor plan**. **More options** has side cuts and drawing an area. See `docs/section-view.md`.
-- **Walk:** click the floor to start walking there. Use W A S D or the arrow keys, and drag to look. Walk up or down the stairs to change floors. See `docs/human-perspective.md`.
+- **Walk:** click the floor to start walking there. Use W A S D or the arrow keys, and move the mouse to look. Esc shows the pointer again, and Esc once more leaves. On touch screens, drag to look and hold the on-screen arrows. Walk up or down the stairs to change floors. See `docs/human-perspective.md`.
 - **Escape route:** set where the fire and the person are, by room or by clicking. Arrows on the floor show the way out, down the stairs from upper floors. If the stairs are cut off, they lead to a window to signal from.
 
 Drop an image anywhere to build a new model. For more than one floor, select one image per floor.
+
+## Bill of materials and export
+
+The BoM tab adds up the plan by floor, in metric or imperial: wall types, quantities to order with waste, door, window and room schedules, and a first look at daylight, exit door and stair figures. Measured rows come from the drawing. Framing, boards, paint and slab assume a typical light-frame house, and each row says how it was worked out.
+
+Export, in the header, downloads the whole building as a CSV bill for spreadsheets, a DXF of the floor plans for CAD, or a JSON of the model and its quantities.
 
 ## Windows and doors
 
@@ -53,7 +59,7 @@ Drop an image anywhere to build a new model. For more than one floor, select one
 
 Choose **Human Perspective** (or **Walk** on mobile), then drag the person onto clear model floor and drop to enter. You can also click a location, preview the floor-level avatar, and press **Enter Human Perspective**. Blocked positions cannot be entered.
 
-Use WASD/arrows to walk and mouse/touch drag to look. Mouse capture is optional; touch devices have on-screen walking buttons. **Exit Human Perspective** or Escape restores the overview camera and prior section configuration. **Choose another starting point** returns to placement.
+Use WASD/arrows to walk and move the mouse to look, with Q and E to turn. Touch devices drag to look and have on-screen walking buttons. Escape shows the pointer, and a second Escape restores the overview camera and prior section configuration. **Choose another starting point** returns to placement.
 
 Eye height is 1.65 m and walking speed is 1.4 m/s. Walls, glazing, and solid parts have collision checks; doorways open for walking. The UI labels model scale as unverified, with an assumed 2.7 m wall/ceiling and floor coverage inferred from plan bounds. See [human-perspective.md](docs/human-perspective.md) for controls, physical constraints, and scale details.
 

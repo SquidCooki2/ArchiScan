@@ -11,12 +11,22 @@ Load a model and choose **Walk** at the top of the screen. The view looks down o
 While walking:
 
 - **W A S D or arrow keys** move on the floor. Diagonal input is normalized.
-- Drag to look. On touch screens, use the same drag and the on-screen arrows.
-- **Pick another spot** returns to the plan view. **Esc**, or choosing another mode, leaves the walk.
+- **Moving the mouse** looks around, as in a first-person game. The pointer is hidden, and the mode switch and panel step aside.
+- **Q and E** turn, for anyone not using a mouse.
+- **Esc** gives the pointer back and shows the panel. Click the view to carry on. **Esc** again, or choosing another mode, leaves the walk.
+- **Pick another spot**, on the panel, returns to the plan view.
+- On touch screens, drag to look and hold the on-screen arrows. If a browser refuses to capture the mouse, dragging to look works there too.
+
+## Stairs
+
+- Near the foot or head of a flight, the walking controls say where it goes, for example "Stairs up to Floor 2".
+- Stairs don't need lining up. Heading roughly along a flight, you follow it and ease toward the middle, so walking at it on a diagonal still climbs.
+- Between a flight's sides, only those sides stop you. Walls next to a flight can overlap it by a few cm, and they used to catch people.
+- The lowest 0.7 m has no sides, so a flight that lands against a wall can still be stepped off to the side.
 
 Entry uses a short fade into the validated position, respecting reduced motion. Resizing adjusts projection without moving the person.
 
-Drag-to-place, typed coordinates, and pointer-lock mouse look were removed on 2026-11-08 to keep the start simple.
+Drag-to-place and typed coordinates were removed on 2026-11-08 to keep the start simple. Mouse capture came back later that day as the normal way to look around.
 
 ## Scale and assumptions
 
