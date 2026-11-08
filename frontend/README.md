@@ -46,9 +46,17 @@ Environment values are embedded at build time. Set `VITE_API_URL` before `npm ru
 `type` determines the rendered element. Untyped entries retain the original full-height wall behavior.
 
 - Windows use their `sillHeight` and `height`, with solid wall infill below/above, a frame and center mullion, and two thin transparent blue glass panes.
-- Doors have an upper wall lintel, a frame, a thin wood leaf, decorative panels, and handles on both sides. They are rendered closed because the JSON does not specify a hinge side or swing angle.
+- Doors have an upper wall lintel, a frame, a thin wood leaf, decorative panels, and handles on both sides. Overview shows them closed; Human Perspective opens them using a default hinge convention because the JSON does not specify swing state.
 - Missing opening dimensions use the backend defaults (window: 0.9 m sill / 1.2 m height; door: 0 m / 2.1 m). Heights stop at the 2.7 m wall top.
 - Every physical part supports area selection and horizontal/vertical cuts. Caps use each part's true bottom/top so a window opening is not filled with a solid wall cap.
+
+## Human Perspective
+
+Choose **Human Perspective** (or **Walk** on mobile), then drag the person onto clear model floor and drop to enter. You can also click a location, preview the floor-level avatar, and press **Enter Human Perspective**. Blocked positions cannot be entered.
+
+Use WASD/arrows to walk and mouse/touch drag to look. Mouse capture is optional; touch devices have on-screen walking buttons. **Exit Human Perspective** or Escape restores the overview camera and prior section configuration. **Choose another starting point** returns to placement.
+
+Eye height is 1.65 m and walking speed is 1.4 m/s. Walls, glazing, and solid parts have collision checks; doorways open for walking. The UI labels model scale as unverified, with an assumed 2.7 m wall/ceiling and floor coverage inferred from plan bounds. See [human-perspective.md](docs/human-perspective.md) for controls, physical constraints, and scale details.
 
 ## Checks
 

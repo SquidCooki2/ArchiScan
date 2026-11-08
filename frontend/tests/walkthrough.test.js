@@ -56,6 +56,7 @@ test('glazing and window sill walls block walking, including floor-to-ceiling wi
   for (const sillHeight of [0, 0.9]) {
     const window = { ...base, type: 'window', sillHeight, height: 2.4 - sillHeight }
     assert.equal(placementAt({ x: 0, z: 0 }, buildWalkWorld([window], bounds)).valid, false)
+    assert.equal(placementAt({ x: 0.4, z: 0 }, buildWalkWorld([window], bounds)).valid, false)
   }
 })
 

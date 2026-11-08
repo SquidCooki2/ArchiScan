@@ -10,7 +10,7 @@ The saved backend sample and live API now return a bare array of `wall`, `window
 - **Window:** solid host-wall infill from the floor to `sillHeight`, host-wall infill from the opening top to 2.7 m, side jambs, top/bottom frame rails, a center mullion, and two thin transparent blue panes. The opening between the wall bands remains a real gap; it is not a full-height solid box with a glass-colored face.
 - **Door:** host-wall infill above the doorway (and below a raised sill if supplied), a frame, a wood-colored leaf, decorative face panels, and lever handles on both sides. Doors are displayed closed because the payload supplies no hinge side, swing angle, or open state.
 
-All parts rotate with their source element using the same image-right/+X and image-down/+Z convention. Window glass uses a lightweight transparent standard material with opacity 0.35 and no depth writes or solid cast shadow. Frame, wood, and hardware surfaces have distinct colors/roughness/metalness. Materials remain shared across elements.
+All parts rotate with their source element using the same image-right/+X and image-down/+Z convention. Window glass uses a lightweight transparent standard material with opacity 0.35 and no depth writes or solid cast shadow. Frame, wood, and hardware surfaces have distinct colors/roughness/metalness. Materials remain shared across elements. Human Perspective uses a contextual 90° door-leaf transform for traversable passages, shared by rendering and collisions; overview keeps the original closed presentation.
 
 ## Validation and defaults
 

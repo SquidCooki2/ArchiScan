@@ -37,6 +37,8 @@ The optional **Plan and numeric bounds** disclosure retains the earlier floorpla
 
 A successful replacement upload clears exploration state. Failed or cancelled uploads preserve the previous model, selection, and cut. No backend contract or API changes are needed.
 
+Human Perspective temporarily shows the full building and hides section handles so the rendered structure matches the walking collision geometry. The selection and cut settings are retained and restored when returning to overview; they are not reset by a walkthrough.
+
 ## Implementation
 
 - `RegionSelection.jsx` projects pointer rays onto the model's floor while drawing and onto a horizontal manipulation plane while moving/resizing. Coordinates are clamped to the centered model bounds. It renders the volume outline, floor tint, corner handles, and move handle.
