@@ -7,7 +7,6 @@ import SceneHandle from './SceneHandle'
 import { useSceneDrag } from './useSceneDrag'
 
 const noRaycast = () => null
-const ground = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0)
 
 function SelectionBox({ area, drawing = false }) {
   if (!area) return null
@@ -30,7 +29,8 @@ function SelectionBox({ area, drawing = false }) {
   </group>
 }
 
-function RegionDrawing({ bounds, area, onArea, onCancel }) {
+function RegionDrawing({ elevation, bounds, area, onArea, onCancel }) {
+  const ground = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -elevation), [elevation])
   const anchor = useRef(null)
   const [draft, setDraft] = useState(null)
   const [firstCorner, setFirstCorner] = useState(null)
@@ -82,10 +82,10 @@ function RegionDrawing({ bounds, area, onArea, onCancel }) {
   </group>
 }
 
-function RegionHandles({ bounds, area, onArea, onDragging, position, onPosition }) {
+function RegionHandles({ elevation, bounds, area, onArea, onDragging, position, onPosition }) {
   const drag = useSceneDrag(onDragging)
   const y = WALL_HEIGHT + 0.12
-  const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -y), [y])
+  const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -y - elevation), [y, elevation])
   const cx = (area.minX + area.maxX) / 2, cz = (area.minZ + area.maxZ) / 2
   const cancel = () => { onArea(area); onPosition(position) }
   return <group>
@@ -94,14 +94,14 @@ function RegionHandles({ bounds, area, onArea, onDragging, position, onPosition 
       key={corner.join('-')} name={`selection-corner-${corner.join('-')}`} position={[area[corner[0]], y, area[corner[1]]]}
       onPointerDown={event => drag.start(event, plane, point => onArea(resizeSelection(area, corner, point, bounds)), cancel)} {...drag.handlers} />)}
     <SceneHandle name="selection-move-handle" color="#e0e7ff" position={[cx, y + 0.25, cz]}
-      onPointerDown={event => drag.start(event, new THREE.Plane(new THREE.Vector3(0, 1, 0), -y - 0.25), (point, start) => onArea(moveSelection(area, point.x - start.x, point.z - start.z, bounds)), cancel)} {...drag.handlers} />
+      onPointerDown={event => drag.start(event, new THREE.Plane(new THREE.Vector3(0, 1, 0), -y - 0.25 - elevation), (point, start) => onArea(moveSelection(area, point.x - start.x, point.z - start.z, bounds)), cancel)} {...drag.handlers} />
     <Html center position={[cx, y + 0.65, cz]} zIndexRange={[10, 0]} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
       <span className="hidden rounded bg-neutral-950/90 px-2 py-1 text-[10px] text-white/60 sm:inline-block">White handle: move · Corners: resize</span>
     </Html>
   </group>
 }
 
-export default function RegionSelection({ bounds, area, drawing, onArea, onComplete, onCancel, onDragging, section, onPosition }) {
-  return drawing ? <RegionDrawing bounds={bounds} area={area} onArea={onComplete} onCancel={onCancel} />
-    : area ? <RegionHandles bounds={bounds} area={area} onArea={onArea} onDragging={onDragging} position={section.position} onPosition={onPosition} /> : null
+export default function RegionSelection({ elevation = 0, bounds, area, drawing, onArea, onComplete, onCancel, onDragging, section, onPosition }) {
+  return drawing ? <RegionDrawing elevation={elevation} bounds={bounds} area={area} onArea={onComplete} onCancel={onCancel} />
+    : area ? <RegionHandles elevation={elevation} bounds={bounds} area={area} onArea={onArea} onDragging={onDragging} position={section.position} onPosition={onPosition} /> : null
 }

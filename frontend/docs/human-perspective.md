@@ -21,7 +21,7 @@ Entry uses a short fade into the validated position, respecting reduced motion. 
 
 ## Scale and assumptions
 
-- Eye height: **1.65 m** above a flat floor at Y = 0.
+- Eye height: **1.65 m** above the selected floor base at Y = `(floor ?? 0) * 2.7`.
 - Walking speed: **1.4 m/s**, with smooth acceleration/deceleration.
 - Collision body: **1.8 m** tall, **0.2 m** horizontal radius.
 - Perspective: a moderate **75° horizontal field of view**, capped at **65° vertical** on portrait screens. Overview camera fitting/view offsets are disabled in human view.
@@ -29,7 +29,7 @@ Entry uses a short fade into the validated position, respecting reduced motion. 
 
 **Scale is labeled unverified.** The current API provides meter-valued geometry but no measurement-confidence or calibration metadata. The frontend cannot claim that AI-estimated dimensions are verified real-world measurements. Wall/ceiling height is the existing assumed **2.7 m**, and flat floor/ceiling coverage is inferred from the plan's bounds. These assumptions are shown in the placement and walkthrough UI.
 
-The current data describes a single floor. There are no stair, level, or floor-polygon records; the walkthrough does not invent multi-floor geometry. An inferred ceiling is displayed only in human view. Incomplete walls/open edges are handled by keeping the person within the inferred floor boundary, rather than allowing a fall into missing geometry.
+The current data identifies levels using element `floor` indices. There are no stair or floor-polygon records; choose a floor in overview to walk on that level. Eye heights are 1.65 m / 4.35 m on the two-floor fixture; see `multi-floor.md`. The walkthrough does not invent stairs. An inferred ceiling is displayed only in human view. Incomplete walls/open edges are handled by keeping the person within the inferred floor boundary, rather than allowing a fall into missing geometry.
 
 ## Physical constraints
 
@@ -37,7 +37,7 @@ The current data describes a single floor. There are no stair, level, or floor-p
 
 Door leaves, panels, and handles swing 90° around a default hinge in placement and human modes, leaving clear passages. The rendering and collision geometry share this transform. No hinge/swing state is supplied by the backend, so the opening direction is a walkthrough convention; overview restores the original closed-door presentation without modifying the backend data.
 
-Movement resolves in small substeps to prevent tunneling and separately along each axis to slide naturally against walls. Longer frames retain meter-per-second movement timing; blur/visibility changes clear input to avoid runaway movement. The eye remains at 1.65 m, so walking cannot pass through floors or the assumed ceiling. No flying/jumping is enabled.
+Movement resolves in small substeps to prevent tunneling and separately along each axis to slide naturally against walls. Longer frames retain meter-per-second movement timing; blur/visibility changes clear input to avoid runaway movement. The eye remains at 1.65 m above the selected floor, so walking cannot pass through floors or the assumed ceiling. No flying/jumping is enabled.
 
 ## Integration
 

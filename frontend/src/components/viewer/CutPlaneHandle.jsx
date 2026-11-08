@@ -7,7 +7,7 @@ import SceneHandle from './SceneHandle'
 import { useSceneDrag } from './useSceneDrag'
 
 /** Drag along the cut axis in a camera-facing plane containing that axis. */
-export default function CutPlaneHandle({ bounds, targetBounds, section, area, onPosition, onDragging }) {
+export default function CutPlaneHandle({ elevation = 0, bounds, targetBounds, section, area, onPosition, onDragging }) {
   const get = useThree(state => state.get)
   const drag = useSceneDrag(onDragging)
   const extent = section.scope === 'area' && area ? area : targetBounds
@@ -24,7 +24,7 @@ export default function CutPlaneHandle({ bounds, targetBounds, section, area, on
         const normal = camera.getWorldDirection(new THREE.Vector3())
         normal.addScaledVector(axis, -normal.dot(axis))
         if (normal.lengthSq() < 0.00001) return
-        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal.normalize(), new THREE.Vector3(...position))
+        const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(normal.normalize(), new THREE.Vector3(position[0], position[1] + elevation, position[2]))
         const range = cutRange(bounds, section.axis, section.scope === 'area' ? area : null)
         drag.start(event, plane, (point, start) => onPosition(Math.max(range.min, Math.min(range.max, section.position + point[section.axis] - start[section.axis]))), () => onPosition(section.position))
       }} {...drag.handlers} />

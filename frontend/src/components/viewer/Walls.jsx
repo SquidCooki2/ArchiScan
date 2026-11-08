@@ -15,7 +15,7 @@ function geometryFromPositions(positions) {
   return geometry
 }
 
-function Wall({ wall, index, bounds, section, area, selected, selecting, onSelect, materials, reducedMotion, plane, openDoors }) {
+function Wall({ wall, index, bounds, section, area, selected, selecting, onSelect, materials, reducedMotion, plane, openDoors, floorId }) {
   const body = useRef()
   const verticalCaps = useRef()
   const horizontalCaps = useRef()
@@ -64,19 +64,19 @@ function Wall({ wall, index, bounds, section, area, selected, selecting, onSelec
           ? clipped ? palette.selectedCut : palette.selected
           : clipped ? palette.cut : palette.solid
         return <mesh key={i} geometry={piece.geometry} material={material} castShadow={piece.role !== 'glass'} receiveShadow={piece.role !== 'glass'}
-          onClick={event => select(event, clipped)} userData={{ wallIndex: index, elementIndex: index, elementType: elementType(wall), part: piece.role }} />
+          onClick={event => select(event, clipped)} userData={{ wallIndex: index, elementIndex: index, floorId, elementType: elementType(wall), part: piece.role }} />
       })}
     </group>
     <group ref={verticalCaps}>
-      {section.axis !== 'y' && caps.map((geometry, i) => geometry && <mesh key={i} geometry={geometry} material={materials.cap} onClick={event => select(event, false)} userData={{ elementIndex: index, elementType: elementType(wall), part: 'cap', sourceRole: pieces[i].role }} />)}
+      {section.axis !== 'y' && caps.map((geometry, i) => geometry && <mesh key={i} geometry={geometry} material={materials.cap} onClick={event => select(event, false)} userData={{ elementIndex: index, floorId, elementType: elementType(wall), part: 'cap', sourceRole: pieces[i].role }} />)}
     </group>
     <group ref={horizontalCaps}>
-      {section.axis === 'y' && caps.map((geometry, i) => geometry && <mesh key={i} geometry={geometry} material={materials.cap} onClick={event => select(event, false)} userData={{ elementIndex: index, elementType: elementType(wall), part: 'cap', sourceRole: pieces[i].role }} />)}
+      {section.axis === 'y' && caps.map((geometry, i) => geometry && <mesh key={i} geometry={geometry} material={materials.cap} onClick={event => select(event, false)} userData={{ elementIndex: index, floorId, elementType: elementType(wall), part: 'cap', sourceRole: pieces[i].role }} />)}
     </group>
   </group>
 }
 
-export default function Walls({ walls, bounds, section, area, selectedWalls, selecting, onSelect, openDoors = false }) {
+export default function Walls({ walls, bounds, section, area, selectedWalls, selecting, onSelect, openDoors = false, elevation = 0, floorId = 0, offsetX = 0, offsetZ = 0 }) {
   const plane = useMemo(() => new THREE.Plane(), [])
   const materials = useMemo(() => {
     const palettes = {
@@ -106,11 +106,11 @@ export default function Walls({ walls, bounds, section, area, selectedWalls, sel
   useLayoutEffect(() => {
     const definition = cutPlane(bounds, section)
     plane.normal.set(definition.normal.x, definition.normal.y, definition.normal.z)
-    plane.constant = definition.constant
-  }, [plane, bounds, section])
+    plane.constant = definition.constant - definition.normal.y * elevation - definition.normal.x * offsetX - definition.normal.z * offsetZ
+  }, [plane, bounds, section, elevation, offsetX, offsetZ])
   useEffect(() => () => Object.entries(materials).forEach(([key, palette]) => { if (key === 'cap') palette.dispose(); else Object.values(palette).forEach(material => material.dispose()) }), [materials])
   return <group>
     {walls.map((wall, index) => <Wall key={index} wall={wall} index={index} bounds={bounds} section={section} area={area}
-      selected={selectedWalls.includes(index)} selecting={selecting} onSelect={onSelect} materials={materials} reducedMotion={reducedMotion} plane={plane} openDoors={openDoors} />)}
+      selected={selectedWalls.includes(index)} selecting={selecting} onSelect={onSelect} materials={materials} reducedMotion={reducedMotion} plane={plane} openDoors={openDoors} floorId={floorId} />)}
   </group>
 }

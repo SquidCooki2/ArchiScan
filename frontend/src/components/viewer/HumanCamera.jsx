@@ -29,7 +29,7 @@ function restore(get, snapshot) {
   controls.enableDamping = damping
 }
 
-export default function HumanCamera({ mode, spawn, world, bridge, movement, reducedMotion, onExit, onLocked, onTransition }) {
+export default function HumanCamera({ elevation = 0, mode, spawn, world, bridge, movement, reducedMotion, onExit, onLocked, onTransition }) {
   const get = useThree(state => state.get)
   const size = useThree(state => state.size)
   const overview = useRef(null)
@@ -63,7 +63,7 @@ export default function HumanCamera({ mode, spawn, world, bridge, movement, redu
     camera.fov = humanFov(size.width / size.height)
     camera.near = 0.05
     camera.far = Math.max(100, (world.maxX - world.minX + world.maxZ - world.minZ) * 5)
-    camera.position.set(spawn.x, EYE_HEIGHT, spawn.z)
+    camera.position.set(spawn.x, elevation + EYE_HEIGHT, spawn.z)
     yaw.current = Math.hypot(spawn.x, spawn.z) > 0.05 ? Math.atan2(spawn.x, spawn.z) : 0
     pitch.current = 0
     camera.quaternion.setFromEuler(look.current.set(0, yaw.current, 0, 'YXZ'))
@@ -73,7 +73,7 @@ export default function HumanCamera({ mode, spawn, world, bridge, movement, redu
     onTransition(!reducedMotion)
     // Resize updates projection separately, without resetting the person's location.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [mode, spawn, world, get, movement, reducedMotion, onExit, onTransition])
+  }, [elevation, mode, spawn, world, get, movement, reducedMotion, onExit, onTransition])
 
   useEffect(() => {
     if (mode !== 'human') return
@@ -174,7 +174,7 @@ export default function HumanCamera({ mode, spawn, world, bridge, movement, redu
     velocity.current.x += (vector.x - velocity.current.x) * acceleration
     velocity.current.z += (vector.z - velocity.current.z) * acceleration
     const next = moveWithCollision(camera.position, { x: velocity.current.x * dt, z: velocity.current.z * dt }, world)
-    camera.position.set(next.x, EYE_HEIGHT, next.z)
+    camera.position.set(next.x, elevation + EYE_HEIGHT, next.z)
     camera.quaternion.setFromEuler(look.current.set(pitch.current, yaw.current, 0, 'YXZ'))
   })
   return null

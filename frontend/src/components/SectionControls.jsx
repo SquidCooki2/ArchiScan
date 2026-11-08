@@ -6,13 +6,14 @@ import Icon from './Icon'
 const buttonStyle = 'rounded-lg border px-2 py-2 text-xs transition-colors focus-visible:outline-2 focus-visible:outline-indigo-400'
 const choiceStyle = active => `${buttonStyle} ${active ? 'border-indigo-400/50 bg-indigo-400/15 text-indigo-200' : 'border-white/10 text-white/55 hover:bg-white/10 hover:text-white'}`
 
-export default function SectionControls({ section, bounds, walls, selectedWalls, area, onToggle, onAxis, onPosition, onFlip, onScope, onSelect, onSelectAll, onClear, onArea, onReset, onFit, onPlanCut, drawingArea, onStartArea, onCancelArea }) {
+export default function SectionControls({ floorNavigation, section, bounds, walls, selectedWalls, area, onToggle, onAxis, onPosition, onFlip, onScope, onSelect, onSelectAll, onClear, onArea, onReset, onFit, onPlanCut, drawingArea, onStartArea, onCancelArea }) {
   const { enabled, axis, position, flipped, scope } = section
   const range = cutRange(bounds, axis, scope === 'area' ? area : null)
   const sides = axis === 'y' ? ['Keep below', 'Keep above'] : axis === 'x' ? ['Keep left', 'Keep right'] : ['Keep top of plan', 'Keep bottom of plan']
   const label = axis === 'y' ? 'Cut height' : axis === 'x' ? 'Cut position from left' : 'Cut position from top'
   const targetMissing = scope === 'walls' ? !selectedWalls.length : scope === 'area' ? !area : false
   return <section aria-label="Section controls" className="fixed bottom-4 left-1/2 z-20 max-h-[42svh] w-80 max-w-[92vw] -translate-x-1/2 overflow-y-auto overscroll-contain rounded-2xl border border-white/10 bg-neutral-900/95 p-4 shadow-2xl backdrop-blur-xl sm:top-28 sm:right-6 sm:bottom-auto sm:left-auto sm:max-h-[calc(100svh-8rem)] sm:translate-x-0">
+    <div className="mb-4 border-b border-white/10 pb-4">{floorNavigation}</div>
     <button type="button" role="switch" aria-checked={enabled} aria-label="Section view" onClick={onToggle}
       className={`flex w-full items-center justify-between gap-3 rounded-xl border px-3 py-3 transition-colors focus-visible:outline-2 focus-visible:outline-indigo-400 ${enabled ? 'border-indigo-400/40 bg-indigo-400/10' : 'border-white/15 bg-white/5 hover:bg-white/10'}`}>
       <span className="flex items-center gap-2 text-sm font-medium"><Icon name="section" className="size-4 text-indigo-300" />Section view</span>
@@ -22,7 +23,7 @@ export default function SectionControls({ section, bounds, walls, selectedWalls,
       <summary className="mb-3 flex cursor-pointer items-center justify-between gap-2 rounded py-1 text-xs text-indigo-200 focus-visible:outline-2 focus-visible:outline-indigo-400"><span>{scope === 'area' && area ? `${(area.maxX - area.minX).toFixed(2)} × ${(area.maxZ - area.minZ).toFixed(2)} m selected` : 'Choose selection'}</span><span className="text-[10px] text-white/45">Edit selection ▾</span></summary>
       <p className="mb-2 text-xs text-white/50">Selection tools</p>
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Cut target">
-        {[['area', 'Area'], ['walls', 'Elements'], ['all', 'Entire model']].map(([value, name]) => <button key={value} type="button" aria-pressed={scope === value} onClick={() => onScope(value)} className={choiceStyle(scope === value)}>{name}</button>)}
+        {[['area', 'Area'], ['walls', 'Elements'], ['all', 'Entire floor']].map(([value, name]) => <button key={value} type="button" aria-pressed={scope === value} onClick={() => onScope(value)} className={choiceStyle(scope === value)}>{name}</button>)}
       </div>
       {scope === 'walls' && <div className="mt-3 space-y-2">
         <p className="text-[11px] leading-5 text-white/50">Click walls, windows, or doors in 3D to select them. Drag to orbit.</p>
