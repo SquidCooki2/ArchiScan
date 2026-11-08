@@ -2,6 +2,7 @@ import { STAIR_STEPS } from './elementParts.js'
 import { buildEvacuationBuilding, buildingRooms } from './evacuation.js'
 import { drawnModel, furnitureRect } from './furniture.js'
 import { elementFloor, elementType, floorCount, isEnclosure, isFurniture, isStairs, openingDimensions, WALL_HEIGHT } from './geometry.js'
+import { doorPrice, paintGallon, PRICES, windowPrice } from './prices.js'
 import { computeRoofPlan, rasterizeFootprint, ROOF_OVERHANG, ROOF_PITCH, toFrame } from './roof.js'
 
 /*
@@ -18,7 +19,7 @@ const UNITS = {
 }
 const SHEET = { metric: { size: 2.88, label: 'sheets', unit: '1.2 × 2.4 m sheets' }, imperial: { size: 32, label: 'sheets', unit: '4 × 8 ft sheets' } }
 // Two coats at a usual spreading rate of 10 m² per liter, or 350 ft² per gallon.
-const PAINT = { metric: { size: 5, label: 'L', unit: 'L' }, imperial: { size: 175, label: 'gal', unit: 'gal' } }
+const PAINT = { metric: { size: 5, label: 'L', unit: 'L' }, imperial: { size: 175, label: 'gal', unit: 'gal', price: paintGallon } }
 
 const STUD_SPACING = 0.4
 const STUDS_PER_OPENING = 4
@@ -334,8 +335,8 @@ export function billOfMaterials(elements, { roofType = 'gable', floor = 'all' } 
 
   const walls = wallTypes(floors).map(type => ({ ...type, area: type.length * WALL_HEIGHT, volume: type.length * WALL_HEIGHT * type.thickness }))
   const inView = row => wholeBuilding ? Object.values(row.floors).reduce((sum, count) => sum + count, 0) : row.floors[floor] ?? 0
-  const doors = measured.doors.map(row => ({ ...row, count: inView(row) })).filter(row => row.count)
-  const windows = measured.windows.map(row => ({ ...row, count: inView(row) })).filter(row => row.count)
+  const doors = measured.doors.map(row => ({ ...row, count: inView(row), each: doorPrice(row.exterior) })).filter(row => row.count)
+  const windows = measured.windows.map(row => ({ ...row, count: inView(row), each: windowPrice(row.glass) })).filter(row => row.count)
   const rooms = measured.rooms.filter(room => wholeBuilding || room.floor === floor)
 
   const sections = [
@@ -380,6 +381,29 @@ export function orderQuantity(row, units = 'metric') {
   }
   const count = Math.ceil(needed - 1e-9)
   return { value: count, unit, text: `${count} ${unit}` }
+}
+
+/**
+ * What a row's order costs: the rounded-up amount to order times the unit price, so the figures shown
+ * multiply out. Null for a piece of furniture with no price yet.
+ */
+export function rowPrice(row, units = 'metric') {
+  const base = PRICES[row.item]
+  if (base === undefined) return null
+  const order = orderQuantity(row, units)
+  const pack = row.pack?.[units]
+  const scaled = pack ? pack.price?.(base) ?? base : base / UNITS[units][row.kind][1]
+  const each = Math.round(scaled * 100) / 100
+  const per = pack ? pack.label.replace(/s$/, '') : order.unit.replace(/s$/, '')
+  return { each, per, total: Math.round(each * order.value) }
+}
+
+/** Estimated cost by section, for doors and windows, and in all. */
+export function billCost(bom, units = 'metric') {
+  const sections = Object.fromEntries(bom.sections.map(section => [section.id, section.rows.reduce((sum, row) => sum + (rowPrice(row, units)?.total ?? 0), 0)]))
+  const materials = Object.values(sections).reduce((sum, value) => sum + value, 0)
+  const openings = [...bom.doors, ...bom.windows].reduce((sum, row) => sum + row.each * row.count, 0)
+  return { sections, materials, openings, total: materials + openings }
 }
 
 /** A plan dimension: millimeters, or feet and inches to the nearest inch. */

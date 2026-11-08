@@ -1,7 +1,8 @@
-import { displayQuantity, displaySize, orderQuantity } from './billOfMaterials.js'
+import { billCost, displayQuantity, displaySize, orderQuantity, rowPrice } from './billOfMaterials.js'
 import { squared, STAIR_STEPS } from './elementParts.js'
 import { furnitureRect } from './furniture.js'
 import { computeBounds, elementFloor, elementType, floorCount, isEnclosure, isFurniture, isStairs, stairRect } from './geometry.js'
+import { CURRENCY, PRICE_BASIS } from './prices.js'
 
 /** A file-safe version of the model's name. */
 export const fileStem = name => name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '') || 'floor-plan'
@@ -24,16 +25,18 @@ export function bomCsv(bom, { name, units = 'metric' }) {
     ['Roof', bom.roofType],
     ['Units', units],
     ['Measured from the floor plan. Assumed rows use a typical light-frame build-up. Check before ordering.'],
+    [PRICE_BASIS],
     [],
-    ['MasterFormat', 'Section', 'Item', 'How it was worked out', 'Quantity', 'Unit', 'Waste percent', 'To order', 'Order unit'],
+    ['MasterFormat', 'Section', 'Item', 'How it was worked out', 'Quantity', 'Unit', 'Waste percent', 'To order', 'Order unit', `Unit price (${CURRENCY})`, 'Priced per', `Estimated price (${CURRENCY})`],
   ]
   for (const section of bom.sections) {
     for (const row of section.rows) {
-      const quantity = displayQuantity(row.quantity, row.kind, units), order = orderQuantity(row, units)
+      const quantity = displayQuantity(row.quantity, row.kind, units), order = orderQuantity(row, units), price = rowPrice(row, units)
       // Spelled out, because a spreadsheet would turn a bare 03 into 3.
-      rows.push([`Division ${section.code}`, section.title, row.item, row.detail, round(quantity.value), quantity.unit, Math.round(row.waste * 100), order.value, order.unit])
+      rows.push([`Division ${section.code}`, section.title, row.item, row.detail, round(quantity.value), quantity.unit, Math.round(row.waste * 100), order.value, order.unit, price?.each ?? '', price?.per ?? '', price?.total ?? ''])
     }
   }
+  const cost = billCost(bom, units)
   const sizeUnit = units === 'metric' ? ' (mm)' : ''
   const size = meters => displaySize(meters, units)
   const area = value => round(displayQuantity(value, 'area', units).value)
@@ -41,10 +44,11 @@ export function bomCsv(bom, { name, units = 'metric' }) {
   const length = value => round(displayQuantity(value, 'length', units).value)
   rows.push([], ['Wall types'], ['Mark', 'Where', `Thickness${sizeUnit}`, `Length (${displayQuantity(0, 'length', units).unit})`, `Area (${areaUnit})`])
   for (const wall of bom.walls) rows.push([wall.mark, wall.exterior ? 'Exterior' : 'Interior', size(wall.thickness), length(wall.length), area(wall.area)])
-  rows.push([], ['Door schedule'], ['Mark', 'Where', `Width${sizeUnit}`, `Height${sizeUnit}`, 'Count'])
-  for (const door of bom.doors) rows.push([door.mark, door.where, size(door.width), size(door.height), door.count])
-  rows.push([], ['Window schedule'], ['Mark', `Width${sizeUnit}`, `Height${sizeUnit}`, `Sill${sizeUnit}`, 'Count', `Glass each (${areaUnit})`])
-  for (const window of bom.windows) rows.push([window.mark, size(window.width), size(window.height), size(window.sill), window.count, area(window.glass)])
+  rows.push([], ['Door schedule'], ['Mark', 'Where', `Width${sizeUnit}`, `Height${sizeUnit}`, 'Count', `Price each (${CURRENCY})`, `Estimated price (${CURRENCY})`])
+  for (const door of bom.doors) rows.push([door.mark, door.where, size(door.width), size(door.height), door.count, door.each, door.each * door.count])
+  rows.push([], ['Window schedule'], ['Mark', `Width${sizeUnit}`, `Height${sizeUnit}`, `Sill${sizeUnit}`, 'Count', `Glass each (${areaUnit})`, `Price each (${CURRENCY})`, `Estimated price (${CURRENCY})`])
+  for (const window of bom.windows) rows.push([window.mark, size(window.width), size(window.height), size(window.sill), window.count, area(window.glass), window.each, window.each * window.count])
+  rows.push([], ['Estimated cost'], ['Materials', cost.materials], ['Doors and windows', cost.openings], ['Total', cost.total])
   rows.push([], ['Room schedule'], ['Room', 'Likely use', 'Floor', `Area (${areaUnit})`, `Glass (${areaUnit})`, 'Glass to floor percent'])
   for (const room of bom.rooms) rows.push([room.name, room.type ?? '', room.floor + 1, area(room.area), area(room.windowArea), Math.round(room.daylight * 100)])
   rows.push([], ['First-look checks. Not a code review.'], ['Check', 'Result', 'Detail'])
@@ -139,5 +143,7 @@ export function floorPlansDxf(elements, { name }) {
 
 /** The model itself, plus its bill, for anything that wants to read the data directly. */
 export function modelJson(elements, bom, { name, units = 'metric' }) {
-  return `${JSON.stringify({ project: 'ArchiTech', model: name, lengthsIn: 'meters', roof: bom.roofType, displayUnits: units, elements, billOfMaterials: bom }, null, 2)}\n`
+  const priced = { ...bom, sections: bom.sections.map(section => ({ ...section, rows: section.rows.map(row => ({ ...row, estimatedPrice: rowPrice(row, units) })) })) }
+  const estimatedCost = { currency: CURRENCY, basis: PRICE_BASIS, ...billCost(bom, units) }
+  return `${JSON.stringify({ project: 'ArchiTech', model: name, lengthsIn: 'meters', roof: bom.roofType, displayUnits: units, elements, billOfMaterials: priced, estimatedCost }, null, 2)}\n`
 }

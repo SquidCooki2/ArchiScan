@@ -1,7 +1,8 @@
 import assert from 'node:assert/strict'
 import { readFileSync } from 'node:fs'
 import { test } from 'node:test'
-import { billOfMaterials, displayQuantity, displaySize, measureBuilding, orderQuantity, roofQuantities } from '../src/lib/billOfMaterials.js'
+import { billCost, billOfMaterials, displayQuantity, displaySize, measureBuilding, orderQuantity, roofQuantities, rowPrice } from '../src/lib/billOfMaterials.js'
+import { doorPrice, money, roughMoney, windowPrice } from '../src/lib/prices.js'
 import { bomCsv, fileStem, floorPlansDxf, modelJson } from '../src/lib/exports.js'
 import { WALL_HEIGHT } from '../src/lib/geometry.js'
 import { settleFurniture } from '../src/lib/settleFurniture.js'
@@ -132,6 +133,85 @@ test('settling furniture changes no counts', () => {
   assert.equal(after.summary.grossFloor, before.summary.grossFloor)
 })
 
+test('every row in both samples has a price, under every roof, floor and unit', () => {
+  for (const model of [house, apartment]) for (const roofType of ['flat', 'gable', 'hip']) for (const floor of ['all', 0]) for (const units of ['metric', 'imperial']) {
+    const bom = billOfMaterials(model, { roofType, floor })
+    for (const row of bom.sections.flatMap(section => section.rows)) {
+      const price = rowPrice(row, units)
+      assert.ok(price && price.each > 0 && price.total > 0, `${row.item} in ${units}`)
+    }
+  }
+})
+
+test('a price multiplies out from the amount to order and the unit price shown', () => {
+  const bom = billOfMaterials(house)
+  for (const units of ['metric', 'imperial']) for (const row of bom.sections.flatMap(section => section.rows)) {
+    const { each, total } = rowPrice(row, units)
+    assert.equal(total, Math.round(each * orderQuantity(row, units).value), row.item)
+  }
+  assert.deepEqual({ each: 5, per: 'pc' }, (({ each, per }) => ({ each, per }))(rowPrice(rowOf(bom, 'Wall studs'))))
+  assert.equal(rowPrice(rowOf(bom, 'Wall board')).per, 'sheet')
+  assert.equal(rowPrice(rowOf(bom, 'Wall paint'), 'imperial').per, 'gal')
+  near(rowPrice(rowOf(bom, 'Wall paint'), 'imperial').each, 37.85)
+  near(rowPrice(rowOf(bom, 'Floor finish'), 'imperial').each, 2.97)
+})
+
+test('the estimated cost adds up, including doors and windows', () => {
+  const bom = billOfMaterials(house)
+  const cost = billCost(bom)
+  const rows = bom.sections.flatMap(section => section.rows)
+  assert.equal(cost.materials, rows.reduce((sum, row) => sum + rowPrice(row).total, 0))
+  assert.equal(cost.materials, Object.values(cost.sections).reduce((sum, value) => sum + value, 0))
+  assert.equal(cost.openings, [...bom.doors, ...bom.windows].reduce((sum, row) => sum + row.each * row.count, 0))
+  assert.equal(cost.total, cost.materials + cost.openings)
+  assert.ok(cost.openings > 0)
+  for (const door of bom.doors) assert.equal(door.each, doorPrice(door.exterior))
+  for (const window of bom.windows) assert.equal(window.each, windowPrice(window.glass))
+})
+
+test('the estimated cost responds to the choices, and barely moves with the units', () => {
+  const measured = measureBuilding(house)
+  const whole = billCost(billOfMaterials(house, {}, measured)).total
+  const metric = billCost(billOfMaterials(house, {}, measured), 'metric').total, imperial = billCost(billOfMaterials(house, {}, measured), 'imperial').total
+  assert.ok(Math.abs(imperial - metric) / metric < 0.03, `${metric} and ${imperial} differ only through rounding up`)
+  const upper = billCost(billOfMaterials(house, { floor: 1 }, measured)).total
+  assert.ok(upper > 0 && upper < whole, 'one floor costs less than the building')
+  assert.notEqual(billCost(billOfMaterials(house, { roofType: 'flat' }, measured)).sections.envelope, billCost(billOfMaterials(house, { roofType: 'hip' }, measured)).sections.envelope)
+})
+
+test('an item with no price shows as such and adds nothing, rather than breaking the bill', () => {
+  const bom = { sections: [{ id: 'x', rows: [{ item: 'Unknown thing', quantity: 2, kind: 'count', waste: 0, pack: null }] }], doors: [], windows: [] }
+  assert.equal(rowPrice(bom.sections[0].rows[0]), null)
+  assert.equal(billCost(bom).total, 0)
+})
+
+test('money reads plainly, with cents only on small unit prices', () => {
+  assert.equal(money(5), '$5')
+  assert.equal(money(0.61), '$0.61')
+  assert.equal(money(37.85), '$37.85')
+  assert.equal(money(2466), '$2,466')
+  assert.equal(money(0), '$0')
+  assert.equal(roughMoney(68449), '$68,400')
+  assert.equal(windowPrice(0.1), 150, 'a small window still has a floor price')
+  assert.equal(windowPrice(1.8), 540)
+})
+
+test('the exports carry the prices and agree with the panel', () => {
+  const bom = billOfMaterials(house)
+  const cost = billCost(bom)
+  const lines = bomCsv(bom, { name: 'x', units: 'metric' }).split('\r\n')
+  assert.ok(lines.some(line => line.endsWith('Priced per,Estimated price (USD)')))
+  assert.ok(lines.includes(`Total,${cost.total}`))
+  assert.ok(lines.some(line => line.startsWith('"Rough US retail prices')))
+  const studs = lines.find(line => line.includes(',Wall studs,')).split(',')
+  assert.equal(Number(studs.at(-1)), rowPrice(rowOf(bom, 'Wall studs')).total)
+  const parsed = JSON.parse(modelJson(house, bom, { name: 'x', units: 'metric' }))
+  assert.equal(parsed.estimatedCost.total, cost.total)
+  assert.equal(parsed.estimatedCost.currency, 'USD')
+  assert.equal(parsed.billOfMaterials.sections[0].rows[0].estimatedPrice.total, rowPrice(bom.sections[0].rows[0]).total)
+  assert.ok(parsed.billOfMaterials.doors.every(door => door.each > 0))
+})
+
 test('the CSV opens cleanly: UTF-8 marked, quoted where needed, and safe from spreadsheet formulas', () => {
   const csv = bomCsv(billOfMaterials(house), { name: '=SUM(A1), "my" plan', units: 'metric' })
   assert.equal(csv[0], '﻿')
@@ -140,7 +220,7 @@ test('the CSV opens cleanly: UTF-8 marked, quoted where needed, and safe from sp
   for (const heading of ['MasterFormat,Section,Item', 'Division 03,Concrete,', 'Wall types', 'Door schedule', 'Window schedule', 'Room schedule']) assert.ok(csv.includes(heading), heading)
   const line = csv.split('\r\n').find(row => row.includes(',Floor finish,'))
   const fields = line.split(',')
-  const order = Number(fields.at(-2)), quantity = Number(fields.at(-5))
+  const order = Number(fields.at(-5)), quantity = Number(fields.at(-8))
   assert.ok(order >= quantity * 1.1 - 0.01 && order <= quantity * 1.1 + 1)
   assert.ok(bomCsv(billOfMaterials(house), { name: 'x', units: 'imperial' }).includes('ft²'))
 })

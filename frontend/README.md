@@ -42,7 +42,9 @@ Drop an image anywhere to build a new model. For more than one floor, select one
 
 ## Bill of materials and export
 
-The BoM tab adds up the plan by floor, in metric or imperial: wall types, quantities to order with waste, door, window and room schedules, and a first look at daylight, exit door and stair figures. Measured rows come from the drawing. Framing, boards, paint and slab assume a typical light-frame house, and each row says how it was worked out.
+The BoM tab adds up the plan by floor, in metric or imperial. It opens on the estimated cost, floor areas, and a first look at daylight, exit door and stair figures. Materials, wall types, doors and windows, and rooms fold out from there, with amounts to order and a price for each. Measured rows come from the drawing. Framing, boards, paint and slab assume a typical light-frame house, and each row says how it was worked out.
+
+Prices are rough US retail figures in `src/lib/prices.js`, for a first budget only. They cover the listed items, with no labor, tax, delivery, roof framing, wiring, or HVAC.
 
 Export, in the header, downloads the whole building as a CSV bill for spreadsheets, a DXF of the floor plans for CAD, or a JSON of the model and its quantities.
 

@@ -41,9 +41,8 @@ export function Switch({ label, checked, onChange }) {
 }
 
 /** The tool area for the current mode: right side on desktop, bottom sheet on phones. */
-export function Panel({ label, wide = false, children }) {
-  const size = wide ? 'max-h-[56svh] sm:w-[26rem] lg:w-[36rem]' : 'max-h-[42svh] sm:w-80'
-  return <section aria-label={label} className={`fixed inset-x-3 bottom-3 z-20 space-y-5 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-[#20262e] p-4 shadow-[0_16px_48px_rgb(0_0_0/0.4)] sm:inset-x-auto sm:top-20 sm:right-5 sm:bottom-auto sm:max-h-[calc(100svh-6.5rem)] ${size}`}>
+export function Panel({ label, children }) {
+  return <section aria-label={label} className="fixed inset-x-3 bottom-3 z-20 max-h-[42svh] space-y-5 overflow-y-auto overscroll-contain rounded-xl border border-white/10 bg-[#20262e] p-4 shadow-[0_16px_48px_rgb(0_0_0/0.4)] sm:inset-x-auto sm:top-20 sm:right-5 sm:bottom-auto sm:max-h-[calc(100svh-6.5rem)] sm:w-80">
     {children}
   </section>
 }

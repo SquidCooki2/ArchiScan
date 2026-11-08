@@ -174,7 +174,7 @@ Pointer lock ran in headless Chrome with focus emulated, and the release was tri
 
 ## Homely finish, bill of materials, and export
 
-`npm test` passes 137 frontend tests and `npm test` in `backend/` passes 17. Lint and the production build are clean. Headless Chrome checks ran at 1440 × 900, 820 × 1100, and 390 × 844 on both samples, with no horizontal scroll, no text under 12 px, and no console errors.
+`npm test` passed 137 frontend tests at that point and `npm test` in `backend/` passes 17. Lint and the production build are clean. Headless Chrome checks ran at 1440 × 900, 820 × 1100, and 390 × 844 on both samples, with no horizontal scroll, no text under 12 px, and no console errors.
 
 - The header shows a text wordmark. Tabs, roof choices, and cut buttons have no icons. New plan, the upload button, and the fire keep theirs.
 - Furniture is settled clear of walls, the stairs, and other pieces in both samples, and routes and walking still work around it.
@@ -183,3 +183,13 @@ Pointer lock ran in headless Chrome with focus emulated, and the release was tri
 - All three exports downloaded from the real button. ezdxf 1.x read the DXF as valid R12 with 0 audit errors and closed outlines on the expected layers.
 
 The DXF and CSV haven't been opened in AutoCAD, Revit, or Excel themselves. Assumed BoM rows use typical rules of thumb and haven't been reviewed by an estimator, and the checks are a first look against remembered 2021 IRC figures, not a code review. Depth precision relies on a logarithmic depth buffer, tested in headless Chrome's software renderer, not on a range of real graphics cards.
+
+## Shorter BoM panel and prices
+
+`npm test` passes 144 frontend tests. Lint and the production build are clean. Headless Chrome checks covered both samples from 360 to 1440 px wide, in metric and imperial, on all floors, with no horizontal scroll, no clipped tables, and no text under 12 px.
+
+- The panel is 320 px wide on desktop, like the other tabs, and doesn't move the house when you switch to it. Sections open one at a time, and Enter opens one from the keyboard.
+- Tests confirm every row in both samples has a price under every roof, floor, and unit choice, that each price is its amount to order times its unit price, and that section, door, window, and overall totals add up and match the CSV and JSON.
+- The sample house comes to about $56,100 in metric and $55,900 in imperial, a difference caused only by rounding up each order in its own units.
+
+Concrete, OSB sheathing, drywall, and shingles were compared with published 2026 figures on November 8, 2026, from sources of mixed quality. Everything else is a general estimate that hasn't been checked against a supplier. The total isn't a construction budget, because it leaves out labor, tax, delivery, roof framing, wiring, and HVAC.

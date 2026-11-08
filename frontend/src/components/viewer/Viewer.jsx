@@ -33,7 +33,7 @@ class ViewerBoundary extends Component {
  * `hero` is the landing page's slowly turning model. `floor` is the floor on show, or 'all'.
  * Placing a walk's start and planning an escape both look down on one floor, cut at plan height.
  */
-export default function Viewer({ walls, hero = false, widePanel = false, modelKey, floor = 'all', section: userSection, sectionRange, area, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, humanMode = 'overview', humanPlacement, humanSpawn, humanMovement, onHumanPreview, onHumanEnter, onHumanExit, onHumanTransition, onHumanFloor, onHumanLock, onHumanStairs, showFurniture = true, roofPlan, roofType, maxHeight, loadedAt, evacuation }) {
+export default function Viewer({ walls, hero = false, modelKey, floor = 'all', section: userSection, sectionRange, area, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, humanMode = 'overview', humanPlacement, humanSpawn, humanMovement, onHumanPreview, onHumanEnter, onHumanExit, onHumanTransition, onHumanFloor, onHumanLock, onHumanStairs, showFurniture = true, roofPlan, roofType, maxHeight, loadedAt, evacuation }) {
   const [manipulating, setManipulating] = useState(false)
   const bounds = useMemo(() => computeBounds(walls), [walls])
   const reducedMotion = useReducedMotion()
@@ -81,7 +81,7 @@ export default function Viewer({ walls, hero = false, widePanel = false, modelKe
         <CutPlaneHandle bounds={bounds} targetBounds={targetBounds} section={section} area={area} top={wallsTop} range={sectionRange} onPosition={onPosition} onDragging={setManipulating} />
       </>}
       <OrbitControls makeDefault enabled={!walking && !drawingArea && !manipulating} autoRotate={hero && !reducedMotion} autoRotateSpeed={0.35} enableDamping dampingFactor={0.08} maxPolarAngle={Math.PI / 2 - 0.05} />
-      <CameraRig bounds={bounds} fitKey={looksDown ? `${resetKey}-${planFloor}` : resetKey} reducedMotion={reducedMotion} hasModel active={!walking} framing={hero ? 'hero' : widePanel ? 'report' : 'panel'} height={looksDown ? floorBase(planFloor) + PLAN_CUT_HEIGHT : maxHeight} view={looksDown ? 'plan' : 'perspective'} />
+      <CameraRig bounds={bounds} fitKey={looksDown ? `${resetKey}-${planFloor}` : resetKey} reducedMotion={reducedMotion} hasModel active={!walking} framing={hero ? 'hero' : 'panel'} height={looksDown ? floorBase(planFloor) + PLAN_CUT_HEIGHT : maxHeight} view={looksDown ? 'plan' : 'perspective'} />
       {placing && <HumanPlacement world={building.floors[planFloor]} placement={humanPlacement} onPreview={onHumanPreview} onEnter={onHumanEnter} onCancel={onHumanExit} />}
       {walking && <HumanCamera spawn={humanSpawn} building={building} movement={humanMovement} reducedMotion={reducedMotion} onExit={onHumanExit} onTransition={onHumanTransition} onFloor={onHumanFloor} onLock={onHumanLock} onStairs={onHumanStairs} />}
     </Canvas>
