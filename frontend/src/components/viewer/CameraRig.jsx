@@ -10,17 +10,25 @@ const VIEW_DIRECTION = new THREE.Vector3(0.3, 0.9, 1).normalize()
 const PLAN_DIRECTION = new THREE.Vector3(0.1, 1.5, 1).normalize()
 
 /** Fit across aspect ratios; user interaction cancels the camera glide. */
-export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, height = WALL_HEIGHT, view = 'perspective' }) {
+export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, active = true, height = WALL_HEIGHT, view = 'perspective' }) {
   const get = useThree(state => state.get)
   const controls = useThree(state => state.controls)
   const size = useThree(state => state.size)
   const goal = useRef(null)
+  const wasActive = useRef(active)
+  const lastFit = useRef(null)
   // Read at fit time, so choosing a different roof doesn't pull the camera away from the user.
   const fitHeight = useRef(height)
   useLayoutEffect(() => { fitHeight.current = height }, [height])
 
   useEffect(() => {
     if (!controls) return
+    const returning = active && !wasActive.current
+    wasActive.current = active
+    if (!active) { goal.current = null; return }
+    const previous = lastFit.current
+    if (returning && previous?.bounds === bounds && previous.fitKey === fitKey && previous.view === view && previous.width === size.width && previous.height === size.height) return
+    lastFit.current = { bounds, fitKey, view, width: size.width, height: size.height }
     const { camera } = get()
     const vertical = THREE.MathUtils.degToRad(camera.fov)
     const mobile = size.width < 640
@@ -59,7 +67,7 @@ export default function CameraRig({ bounds, fitKey, reducedMotion, hasModel, hei
     const cancel = () => { goal.current = null }
     controls.addEventListener('start', cancel)
     return () => controls.removeEventListener('start', cancel)
-  }, [get, controls, bounds, fitKey, reducedMotion, hasModel, view, size.width, size.height])
+  }, [get, controls, bounds, fitKey, reducedMotion, hasModel, active, view, size.width, size.height])
 
   useFrame((_, delta) => {
     const g = goal.current

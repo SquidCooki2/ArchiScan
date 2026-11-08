@@ -7,15 +7,17 @@ const { sniffMediaType } = require('../lib/sniffMediaType');
 const ALLOWED_MEDIA_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const DATA_URL_RE = /^data:([^;,]+);base64,/i;
 const BASE64_RE = /^[A-Za-z0-9+/]+={0,2}$/;
+const MAX_FLOORS = 5;
 
-/** Returns { base64, mediaType } or throws HttpError 400. */
-function parseRequestBody(body) {
-  if (!body || typeof body.image !== 'string' || !body.image) {
+/** Parses a single image entry ({ image, mediaType } or raw string) into { base64, mediaType }. */
+function parseSingleImage(entry) {
+  const obj = typeof entry === 'string' ? { image: entry } : entry;
+  if (!obj || typeof obj.image !== 'string' || !obj.image) {
     throw new HttpError(400, 'INVALID_REQUEST', '"image" must be a non-empty base64 string');
   }
 
-  let base64 = body.image.trim();
-  let mediaType = typeof body.mediaType === 'string' ? body.mediaType.toLowerCase() : undefined;
+  let base64 = obj.image.trim();
+  let mediaType = typeof obj.mediaType === 'string' ? obj.mediaType.toLowerCase() : undefined;
 
   const match = DATA_URL_RE.exec(base64);
   if (match) {
@@ -37,23 +39,49 @@ function parseRequestBody(body) {
   return { base64, mediaType };
 }
 
+/** Backwards-compatible helper for single-image callers. */
+function parseRequestBody(body) {
+  return parseSingleImage(body);
+}
+
+/**
+ * Parses either `{ image, mediaType }` (1 floor) or `{ images: [...] }` (1..MAX_FLOORS floors).
+ * Returns an array of `{ base64, mediaType }` ordered from floor 0 upward.
+ */
+function parseRequestImages(body) {
+  if (!body || typeof body !== 'object') {
+    throw new HttpError(400, 'INVALID_REQUEST', 'Request body must be a JSON object');
+  }
+  if (body.images !== undefined) {
+    if (!Array.isArray(body.images) || body.images.length === 0) {
+      throw new HttpError(400, 'INVALID_REQUEST', '"images" must be a non-empty array of floor images');
+    }
+    if (body.images.length > MAX_FLOORS) {
+      throw new HttpError(400, 'INVALID_REQUEST', `Too many floor images (maximum is ${MAX_FLOORS})`);
+    }
+    return body.images.map((item) => parseSingleImage(item));
+  }
+  return [parseSingleImage(body)];
+}
+
 function decodedSize(base64) {
   const padding = base64.endsWith('==') ? 2 : base64.endsWith('=') ? 1 : 0;
   return (base64.length / 4) * 3 - padding;
 }
 
-/** Calls the model, parses and validates; retries once on invalid output. */
-async function getWalls(claude, base64, mediaType) {
+/** Calls the model for one floor image, parses and validates; retries once on invalid output. */
+async function getWallsForFloor(claude, base64, mediaType, floorIndex = 0) {
+  const tagFloor = (items) => items.map((w) => ({ ...w, floor: floorIndex }));
   let text = await claude.parseBlueprintImage(base64, mediaType);
   try {
-    return validateWalls(extractJson(text));
+    return tagFloor(validateWalls(extractJson(text), floorIndex));
   } catch (err) {
     if (!(err instanceof ModelOutputError)) throw err;
   }
 
   text = await claude.parseBlueprintImage(base64, mediaType, text);
   try {
-    return validateWalls(extractJson(text));
+    return tagFloor(validateWalls(extractJson(text), floorIndex));
   } catch (err) {
     if (err instanceof ModelOutputError) {
       throw new HttpError(502, 'MODEL_OUTPUT_INVALID', 'The model returned output that could not be understood. Please try again.');
@@ -66,14 +94,23 @@ function createParseBlueprintRouter({ config, claude }) {
   const router = express.Router();
 
   router.post('/parse-blueprint', async (req, res) => {
-    const { base64, mediaType } = parseRequestBody(req.body);
+    const images = parseRequestImages(req.body);
 
-    if (decodedSize(base64) > config.maxImageBytes) {
-      throw new HttpError(413, 'IMAGE_TOO_LARGE', `Image exceeds the ${config.maxImageBytes} byte limit`);
+    let totalBytes = 0;
+    for (const img of images) {
+      const size = decodedSize(img.base64);
+      if (size > config.maxImageBytes) {
+        throw new HttpError(413, 'IMAGE_TOO_LARGE', `Image exceeds the ${config.maxImageBytes} byte limit`);
+      }
+      totalBytes += size;
     }
-    req.imageBytes = decodedSize(base64);
+    req.imageBytes = totalBytes;
 
-    const walls = await getWalls(claude, base64, mediaType);
+    const perFloorWalls = await Promise.all(
+      images.map((img, floorIndex) => getWallsForFloor(claude, img.base64, img.mediaType, floorIndex))
+    );
+    const walls = perFloorWalls.flat();
+
     if (walls.length === 0) {
       throw new HttpError(422, 'NO_WALLS_FOUND', 'No walls were found. Is this image a floorplan?');
     }
@@ -83,4 +120,4 @@ function createParseBlueprintRouter({ config, claude }) {
   return router;
 }
 
-module.exports = { createParseBlueprintRouter, parseRequestBody };
+module.exports = { createParseBlueprintRouter, parseRequestBody, parseRequestImages, MAX_FLOORS };

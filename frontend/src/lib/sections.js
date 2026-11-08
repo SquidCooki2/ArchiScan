@@ -105,26 +105,6 @@ export function partitionFootprint(points, area) {
   return pieces
 }
 
-/**
- * The stacked solids of one contract element. A window is sill wall, glass, and lintel; a door is
- * panel and lintel. Glass and door panels are thinner than their host wall.
- */
-export function elementParts(element) {
-  const type = element.type ?? 'wall'
-  if (type === 'wall') return [{ kind: 'wall', base: 0, top: WALL_HEIGHT }]
-  const window = type === 'window'
-  const sill = element.sillHeight ?? (window ? 0.9 : 0)
-  const head = Math.min(WALL_HEIGHT, sill + (element.height ?? (window ? 1.2 : 2.1)))
-  const opening = window
-    ? { kind: 'glass', base: sill, top: head, thickness: Math.min(element.depth * 0.25, 0.04) }
-    : { kind: 'door', base: sill, top: head, thickness: Math.min(element.depth * 0.4, 0.06) }
-  return [
-    ...(sill > 0 ? [{ kind: 'wall', base: 0, top: sill }] : []),
-    opening,
-    ...(head < WALL_HEIGHT ? [{ kind: 'wall', base: head, top: WALL_HEIGHT }] : []),
-  ]
-}
-
 /** Flat triangle positions for a closed vertical prism over a convex footprint. */
 export function prismPositions(points, height = WALL_HEIGHT, base = 0) {
   if (points.length < 3) return []
@@ -143,10 +123,10 @@ export function prismPositions(points, height = WALL_HEIGHT, base = 0) {
 }
 
 /** True intersections, including vertical cuts through diagonal walls, get a solid cap. */
-export function sectionCap(points, bounds, section, base = 0, top = WALL_HEIGHT) {
+export function sectionCap(points, bounds, section, bottom = 0, top = WALL_HEIGHT) {
   const coordinate = cutCoordinate(bounds, section)
   if (section.axis === 'y') {
-    if (coordinate <= base + EPSILON || coordinate >= top - EPSILON) return []
+    if (coordinate <= bottom + EPSILON || coordinate >= top - EPSILON) return []
     return points.map(p => [p.x, coordinate, p.z])
   }
   const axis = section.axis
@@ -166,7 +146,7 @@ export function sectionCap(points, bounds, section, base = 0, top = WALL_HEIGHT)
   crossings.sort((a, b) => a[otherAxis] - b[otherAxis])
   if (crossings.length < 2) return []
   const a = crossings[0], b = crossings[crossings.length - 1]
-  return [[a.x, base, a.z], [b.x, base, b.z], [b.x, top, b.z], [a.x, top, a.z]]
+  return [[a.x, bottom, a.z], [b.x, bottom, b.z], [b.x, top, b.z], [a.x, top, a.z]]
 }
 
 export function capPositions(points) {

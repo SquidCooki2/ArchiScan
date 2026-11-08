@@ -1,4 +1,5 @@
 import { useMemo, useRef, useState } from 'react'
+import { elementType } from '../lib/geometry'
 import { centralArea, wallFootprint } from '../lib/sections'
 
 export default function AreaPicker({ walls, bounds, area, onChange }) {
@@ -39,7 +40,7 @@ export default function AreaPicker({ walls, bounds, area, onChange }) {
         if (valid(next)) onChange(next)
       }}
       onPointerCancel={() => { anchor.current = null; setDraft(null) }}>
-      {footprints.map((points, i) => <polygon key={i} points={points.map(p => `${p.x},${p.z}`).join(' ')} fill="#d4d4d8" pointerEvents="none" />)}
+      {footprints.map((points, i) => <polygon key={i} points={points.map(p => `${p.x},${p.z}`).join(' ')} fill={elementType(walls[i]) === 'window' ? '#93c5fd' : elementType(walls[i]) === 'door' ? '#a47c58' : '#d4d4d8'} pointerEvents="none" />)}
       {shown && <rect x={shown.minX} y={shown.minZ} width={shown.maxX - shown.minX} height={shown.maxZ - shown.minZ} fill="#818cf8" fillOpacity={0.25} stroke="#a5b4fc" strokeWidth={0.04} pointerEvents="none" />}
     </svg>
     <div className="flex justify-between gap-2">
