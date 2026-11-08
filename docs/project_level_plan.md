@@ -1,0 +1,106 @@
+# Project Level Planning & Initialization
+
+## 1. Project Overview
+This project is a rapid-prototype web application that takes 2D floorplan images and generates interactive 3D models with section-view capabilities. It utilizes Claude's highest-tier Opus model for advanced vision-based blueprint parsing.
+
+## 2. Folder Structure
+The repository is split into distinct environments for separation of concerns, with documentation folders at every layer for AI agents and human contributors.
+
+```text
+/ (Root)
+├── docs/                     # Top-level project rules and backlogs
+│   ├── rules_cowork.md       # Global collaboration rules
+│   ├── backlog_project.md    # High-level epic tracking
+│   └── rules_agents.md       # Global instructions for AI agents
+├── frontend/                 # React/Three.js application
+│   ├── docs/                 # Frontend-specific rules/backlogs
+│   ├── src/
+│   └── package.json
+└── backend/                  # API and Claude Integration
+    ├── docs/                 # Backend-specific rules/backlogs
+    ├── src/
+    └── package.json
+```
+
+## 3. First Build Instructions
+To initialize the workspace for all contributors, run the following commands in the terminal:
+
+1. **Create Root & Docs:**
+   ```bash
+   mkdir -p docs frontend/docs backend/docs
+   touch docs/rules_cowork.md docs/backlog_project.md docs/rules_agents.md
+   ```
+2. **Initialize Frontend:**
+   ```bash
+   cd frontend
+   npm create vite@latest . -- --template react
+   npm install three @react-three/fiber @react-three/drei tailwindcss postcss autoprefixer
+   touch docs/rules_cowork.md docs/backlog_frontend.md docs/rules_agents.md
+   cd ..
+   ```
+3. **Initialize Backend:**
+   ```bash
+   cd backend
+   npm init -y
+   npm install express cors dotenv @anthropic-ai/sdk
+   touch docs/rules_cowork.md docs/backlog_backend.md docs/rules_agents.md
+   cd ..
+   ```
+
+> [!NOTE]
+> **Setup status / gotchas (Windows):** Steps 1-3 above have already been run; `frontend/` and `backend/` are scaffolded with dependencies installed (Node v26, npm 11). `npm create vite` refuses to run in a non-empty folder (`frontend/docs/` counts), so the scaffold was generated in a temp folder and copied in. In PowerShell, use `npm.cmd` if script execution is disabled, and `New-Item -ItemType File` instead of `touch`. Tailwind v4 has no `init` command; see `frontend/docs/` and `docs/frontend_plan.md` section 2 for the Vite plugin setup.
+
+## 4. Frontend-Backend Integration Guide
+To ensure seamless operation between the two layers:
+*   **CORS:** The backend must be configured with a CORS policy that explicitly allows requests from the frontend's local development port (usually `http://localhost:5173`).
+*   **API Contract:** The frontend will send a `POST` request to `/api/parse-blueprint` containing a Base64 string of the uploaded image.
+*   **Data Format:** The backend must return a strict JSON array of objects representing walls: `[{ "x": float, "z": float, "width": float, "depth": float, "rotation": float }]`.
+*   **Environment Variables:** The frontend will use `VITE_API_URL=http://localhost:3000` to locate the backend. The backend will use `ANTHROPIC_API_KEY` to securely communicate with Claude.
+
+## 5. Authoritative Contract (single source of truth)
+Detailed plans: [frontend_plan.md](frontend_plan.md) and [backend_plan.md](backend_plan.md). If they ever disagree with this section, update all three together.
+
+**Request:** `POST {VITE_API_URL}/api/parse-blueprint`, `Content-Type: application/json`
+```json
+{ "image": "<raw base64, no data: prefix>", "mediaType": "image/png" }
+```
+**Success (200):** `[{ "x": 2.5, "z": 0.1, "width": 5.0, "depth": 0.2, "rotation": 0 }]`
+
+**Error:** `{ "error": { "code": "INVALID_REQUEST", "message": "..." } }` with status 400/413/422/429/502/504/500 (full table in `backend_plan.md` section 5). The frontend displays `error.message`.
+
+**Coordinates:** meters; top-down; origin at top-left of the plan's outer extent; +X = image right; +Z = image down; `(x, z)` = wall center; `width` = length along local X, `depth` = thickness; `rotation` = radians about Y in `[0, PI)` (0 = runs along X). Wall height is a frontend constant of 2.7 m. Doors/windows are gaps in the walls.
+
+**Limits:** images up to 5 MB (png/jpeg/webp/gif); request body up to 50 MB; frontend timeout 150 s.
+
+## 6. Local Development
+| Item | Value |
+|---|---|
+| Backend | `cd backend && npm run dev` (port 3000) |
+| Frontend | `cd frontend && npm run dev` (port 5173) |
+| Backend env | `backend/.env`: `PORT`, `ANTHROPIC_API_KEY`, `ANTHROPIC_MODEL`, `CORS_ORIGIN`, `MAX_IMAGE_BYTES` |
+| Frontend env | `frontend/.env`: `VITE_API_URL=http://localhost:3000` |
+| Health check | `GET http://localhost:3000/api/health` returns `{ "status": "ok" }` |
+
+Both apps can be built in parallel: the frontend develops against `?mock=1` sample data and the backend against curl plus mocked Claude responses.
+
+## 7. Git & Secrets
+*   Add a root `.gitignore` covering `node_modules/`, `.env`, `dist/`, and logs. `.env.example` files are committed; real `.env` files never are.
+*   Never log or commit the API key or full Base64 payloads.
+*   Small, focused commits per backlog task.
+
+## 8. Milestones
+1. **M0 Setup (done):** folders, dependencies, docs.
+2. **M1 Parallel build:** frontend Tasks 0-5 against mock data; backend Tasks 1-5 with tests.
+3. **M2 Integration:** both servers running, real floorplan uploads end to end (frontend Task 7, backend Task 6); tune the prompt.
+4. **M3 Polish:** wall caps, animations, responsive checks.
+
+## 9. Project Definition of Done
+*   Uploading a floorplan image returns a 3D model that matches the plan's layout and orientation within a reasonable tolerance.
+*   The section slider cuts the model smoothly from the top down.
+*   Errors (bad file, server down, API failure) surface as clear messages with no crashes.
+*   `npm run build` and `npm run lint` pass in `frontend/`; `npm test` passes in `backend/`.
+
+## 10. Agent Instructions
+*   Pick one app (frontend or backend), read its plan in `docs/` plus its `rules_*.md` and `backlog_*.md` under `<app>/docs/`, and work through the backlog in order, ticking items off as you finish them.
+*   Stay inside your app's folder unless changing the shared contract; if you must, update this section and both plan files in the same change.
+*   Update `docs/backlog_project.md` when a milestone is reached.
