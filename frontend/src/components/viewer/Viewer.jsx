@@ -1,105 +1,56 @@
-import { Environment, Lightformer, OrbitControls } from '@react-three/drei'
+import { Component, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
-import { Suspense, useEffect, useMemo } from 'react'
-import * as THREE from 'three'
-import { WALL_HEIGHT, computeBounds } from '../../lib/geometry'
-import CameraRig from './CameraRig'
+import { Environment, Lightformer, OrbitControls } from '@react-three/drei'
+import { computeBounds } from '../../lib/geometry'
 import Floor from './Floor'
-import Roof from './Roof'
-import SectionPlane from './SectionPlane'
 import Walls from './Walls'
+import Roof from './Roof'
+import CameraRig from './CameraRig'
+import SectionPlane from './SectionPlane'
+import RegionSelection from './RegionSelection'
+import CutPlaneHandle from './CutPlaneHandle'
+import { useReducedMotion } from '../../lib/useReducedMotion'
 
-/** Far above the walls: an "off" clipping plane that never cuts anything. */
-const NO_CUT = WALL_HEIGHT + 100
+function Unavailable() {
+  return <div role="status" className="absolute inset-x-6 top-28 mx-auto max-w-md rounded-xl border border-white/10 bg-neutral-900 p-4 text-center text-xs leading-5 text-white/60">The 3D viewer could not start. Enable WebGL in your browser, then reload this page.</div>
+}
 
-export default function Viewer({
-  walls,
-  modelKey,
-  fitKey,
-  clipEnabled,
-  clipHeight,
-  maxHeight,
-  roofPlan,
-  roofType,
-  loadedAt,
-  reducedMotion,
-}) {
+class ViewerBoundary extends Component {
+  state = { failed: false }
+  static getDerivedStateFromError() { return { failed: true } }
+  render() { return this.state.failed ? <Unavailable /> : this.props.children }
+}
+
+export default function Viewer({ walls, modelKey, section, selectedWalls, area, onSelect, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, roofPlan, roofType, maxHeight, loadedAt }) {
+  const [manipulating, setManipulating] = useState(false)
   const bounds = useMemo(() => computeBounds(walls), [walls])
-
-  // One shared plane; the wall material and cap material both reference it.
-  // Normal (0,-1,0) keeps everything below y = constant.
-  const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, -1, 0), NO_CUT), [])
-  // Moving a three.js object in place is the normal R3F pattern; the renderer reads it next frame.
-  useEffect(() => {
-    // oxlint-disable-next-line react/immutability
-    plane.constant = clipEnabled ? clipHeight : NO_CUT
-  }, [plane, clipEnabled, clipHeight])
-
-  const shadowExtent = Math.max(bounds.size, 8) / 2 + 4
-  const hasModel = walls.length > 0
-
-  return (
-    <Canvas
-      shadows="percentage"
-      dpr={[1, 2]}
-      camera={{ position: [10, 10, 10], fov: 45, near: 0.1, far: 500 }}
-      gl={{ localClippingEnabled: true, antialias: true }}
-      aria-label={hasModel ? '3D model of the uploaded floorplan. Drag to orbit, scroll to zoom.' : undefined}
-    >
+  const reducedMotion = useReducedMotion()
+  const targetBounds = useMemo(() => {
+    if (section.scope !== 'walls' || !selectedWalls.length) return { minX: -bounds.width / 2, maxX: bounds.width / 2, minZ: -bounds.depth / 2, maxZ: bounds.depth / 2 }
+    const selected = computeBounds(walls.filter((_, i) => selectedWalls.includes(i)))
+    return { minX: selected.minX - bounds.cx, maxX: selected.maxX - bounds.cx, minZ: selected.minZ - bounds.cz, maxZ: selected.maxZ - bounds.cz }
+  }, [walls, bounds, section.scope, selectedWalls])
+  const hasTarget = section.scope === 'all' || (section.scope === 'walls' ? selectedWalls.length > 0 : Boolean(area))
+  const shadowSize = Math.max(bounds.size, 12)
+  return <ViewerBoundary>
+    <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [12, 12, 12], fov: 45 }} gl={{ localClippingEnabled: true, alpha: true }} style={{ cursor: drawingArea ? 'crosshair' : manipulating ? 'grabbing' : section.scope === 'walls' ? 'crosshair' : 'grab' }} fallback={<Unavailable />}>
       <ambientLight intensity={0.4} />
-      <directionalLight
-        castShadow
-        position={[8, 12, 6]}
-        intensity={1.5}
-        shadow-mapSize={[2048, 2048]}
-        shadow-bias={-0.0004}
-        shadow-normalBias={0.02}
-        shadow-camera-left={-shadowExtent}
-        shadow-camera-right={shadowExtent}
-        shadow-camera-top={shadowExtent}
-        shadow-camera-bottom={-shadowExtent}
-        shadow-camera-far={60}
-      />
-
-      {/* Local light rig instead of a downloaded HDR: no network dependency, no crash when offline. */}
-      <Suspense fallback={null}>
-        <Environment resolution={256} frames={1}>
-          <Lightformer form="rect" intensity={1.6} position={[0, 6, -10]} scale={[16, 6, 1]} />
-          <Lightformer form="rect" intensity={0.8} position={[-10, 3, 2]} rotation-y={Math.PI / 2} scale={[12, 4, 1]} />
-          <Lightformer form="rect" intensity={0.5} color="#8ec5e8" position={[10, 2, 4]} rotation-y={-Math.PI / 2} scale={[10, 3, 1]} />
-        </Environment>
-      </Suspense>
-
-      <Floor bounds={bounds} hasModel={hasModel} />
-
-      {hasModel && (
-        <Walls key={modelKey} walls={walls} bounds={bounds} plane={plane} reducedMotion={reducedMotion} />
-      )}
-
-      {hasModel && (
-        <Roof
-          key={`${modelKey}-${roofType}`}
-          plan={roofPlan}
-          type={roofType}
-          bounds={bounds}
-          plane={plane}
-          loadedAt={loadedAt}
-          reducedMotion={reducedMotion}
-        />
-      )}
-
-      {hasModel && clipEnabled && clipHeight < maxHeight && (
-        <SectionPlane bounds={bounds} height={clipHeight} />
-      )}
-
-      <OrbitControls
-        makeDefault
-        enableDamping
-        minDistance={2}
-        maxDistance={120}
-        maxPolarAngle={Math.PI / 2 - 0.05}
-      />
-      <CameraRig bounds={bounds} height={hasModel ? maxHeight : 0} fitKey={fitKey} reducedMotion={reducedMotion} />
+      <directionalLight castShadow position={[shadowSize, shadowSize * 1.5, shadowSize * 0.75]} intensity={2} shadow-mapSize={[2048, 2048]} shadow-camera-left={-shadowSize} shadow-camera-right={shadowSize} shadow-camera-top={shadowSize} shadow-camera-bottom={-shadowSize} shadow-camera-far={shadowSize * 5} shadow-normalBias={0.03} />
+      {/* A local studio environment avoids a network-dependent HDR download. */}
+      <Environment resolution={64}>
+        <Lightformer position={[0, 8, 0]} rotation-x={Math.PI / 2} scale={[15, 15, 1]} intensity={1.5} />
+        <Lightformer position={[-8, 4, 0]} rotation-y={Math.PI / 2} scale={[10, 6, 1]} color="#a5b4fc" intensity={1} />
+      </Environment>
+      <Floor bounds={bounds} />
+      {walls.length > 0 && <Walls key={modelKey} walls={walls} bounds={bounds} section={section} area={area} selectedWalls={selectedWalls} selecting={section.scope === 'walls'} onSelect={onSelect} />}
+      {walls.length > 0 && <Roof key={`${modelKey}-${roofType}`} plan={roofPlan} type={roofType} bounds={bounds} section={section} cut={section.enabled && hasTarget} region={section.scope === 'all' ? null : section.scope === 'area' ? area : targetBounds} loadedAt={loadedAt} reducedMotion={reducedMotion} />}
+      {walls.length > 0 && section.enabled && hasTarget && <SectionPlane bounds={bounds} targetBounds={targetBounds} section={section} area={area} />}
+      {walls.length > 0 && section.scope === 'area' && <RegionSelection bounds={bounds} area={area} drawing={drawingArea}
+        onArea={onArea} onComplete={onCompleteArea} onCancel={onCancelArea} onDragging={setManipulating} section={section} onPosition={onPosition} />}
+      {walls.length > 0 && section.enabled && hasTarget && !drawingArea && <CutPlaneHandle bounds={bounds} targetBounds={targetBounds}
+        section={section} area={area} maxHeight={maxHeight} onPosition={onPosition} onDragging={setManipulating} />}
+      <OrbitControls makeDefault enabled={!drawingArea && !manipulating} enableDamping dampingFactor={0.08} maxPolarAngle={Math.PI / 2 - 0.05} />
+      <CameraRig bounds={bounds} fitKey={resetKey} reducedMotion={reducedMotion} hasModel={walls.length > 0} height={maxHeight} />
     </Canvas>
-  )
+  </ViewerBoundary>
 }

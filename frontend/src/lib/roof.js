@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { WALL_HEIGHT } from './geometry'
+import { WALL_HEIGHT } from './geometry.js'
 
 /**
  * Roofs are generated entirely on the frontend from the wall data (no API change).
@@ -44,7 +44,7 @@ function dominantAngle(elements) {
 }
 
 /** Element extents in a frame rotated by `angle`. */
-function toFrame(elements, angle) {
+export function toFrame(elements, angle) {
   const cos = Math.cos(angle)
   const sin = Math.sin(angle)
   return elements.map((e) => ({
@@ -102,7 +102,7 @@ function erode(mask, nu, nv, k) {
 }
 
 /** Footprint mask in the rotated frame, or null if the outline isn't closed. */
-function rasterizeFootprint(items) {
+export function rasterizeFootprint(items) {
   const pad = CLOSE_RADIUS + 3 * CELL
   const b = frameBounds(items, 0)
   const spanU = b.maxU - b.minU + 2 * pad
