@@ -2,7 +2,7 @@ import { useRef } from 'react'
 import { EYE_HEIGHT, HUMAN_DRAG_TYPE, WALK_SPEED } from '../lib/walkthrough'
 import Icon from './Icon'
 
-export default function HumanPerspectiveControls({ mode, placement, bounds, floor, bridge, onCancel, onReposition, movement, locked, transitioning }) {
+export default function HumanPerspectiveControls({ mode, placement, bounds, bridge, onCancel, onReposition, movement, locked, transitioning }) {
   const touchDrag = useRef(null)
   const buttonClass = 'rounded-xl border border-white/15 bg-white/5 px-3 py-2 text-xs text-white/80 transition-colors hover:bg-white/10 focus-visible:outline-2 focus-visible:outline-indigo-400'
   if (mode === 'placing') return <section aria-label="Human placement" className="fixed bottom-4 left-1/2 z-20 max-h-[42svh] w-80 max-w-[92vw] -translate-x-1/2 overflow-y-auto rounded-2xl border border-white/10 bg-neutral-900/95 p-5 shadow-2xl backdrop-blur-xl sm:top-28 sm:right-6 sm:bottom-auto sm:left-auto sm:max-h-[calc(100svh-8rem)] sm:translate-x-0">
@@ -23,13 +23,13 @@ export default function HumanPerspectiveControls({ mode, placement, bounds, floo
         if (Number.isFinite(value)) bridge.current?.set({ x: placement?.x ?? 0, z: placement?.z ?? 0, [axis]: value - size / 2 })
       }} className="mt-1 w-full rounded-lg border border-white/15 bg-neutral-950 px-2 py-2 text-xs text-white focus-visible:outline-2 focus-visible:outline-indigo-400" /></label>)}</div>
     </details>
-    <p className="mt-4 text-[10px] leading-5 text-white/45">{floor?.label} · Base {floor?.elevation.toFixed(1)} m<br />Eye height {EYE_HEIGHT.toFixed(2)} m · Walking {WALK_SPEED.toFixed(1)} m/s<br /><span className="text-indigo-200/80">Model scale unverified; 2.7 m height assumed.</span><br />Floor coverage is inferred from plan bounds. Doors open for the walkthrough. Section edits return in overview.</p>
+    <p className="mt-4 text-[10px] leading-5 text-white/45">Eye height {EYE_HEIGHT.toFixed(2)} m · Walking {WALK_SPEED.toFixed(1)} m/s<br /><span className="text-indigo-200/80">Model scale unverified; 2.7 m height assumed.</span><br />Floor coverage is inferred from plan bounds. Doors open for the walkthrough. Section edits return in overview.</p>
     <button type="button" onClick={onCancel} className={`${buttonClass} mt-3 w-full`}>Back to overview</button>
   </section>
 
   if (mode !== 'human') return null
   return <>
-    <div className="pointer-events-none fixed top-24 left-4 z-20 rounded-xl border border-white/10 bg-neutral-950/80 px-3 py-2 text-[10px] text-white/70 backdrop-blur-xl sm:top-28 sm:left-7">Human Perspective · {floor?.label} · {EYE_HEIGHT.toFixed(2)} m eye height<br /><span className="text-indigo-200/70">Scale unverified · 2.7 m height assumed</span></div>
+    <div className="pointer-events-none fixed top-24 left-4 z-20 rounded-xl border border-white/10 bg-neutral-950/80 px-3 py-2 text-[10px] text-white/70 backdrop-blur-xl sm:top-28 sm:left-7">Human Perspective · {EYE_HEIGHT.toFixed(2)} m eye height<br /><span className="text-indigo-200/70">Scale unverified · 2.7 m height assumed</span></div>
     <section aria-label="Walkthrough navigation" className="fixed right-4 bottom-4 left-4 z-20 flex items-end justify-between gap-3 rounded-2xl border border-white/10 bg-neutral-950/90 p-3 backdrop-blur-xl sm:right-7 sm:bottom-7 sm:left-7 sm:p-4">
       <div className="space-y-2">
         <p className="text-xs text-white/75">{transitioning ? 'Moving to your viewpoint…' : locked ? 'Mouse look active · WASD / arrows to walk' : 'Drag to look · WASD / arrows to walk'}</p>

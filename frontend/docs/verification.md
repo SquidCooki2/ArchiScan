@@ -3,8 +3,8 @@
 ## Automated checks
 
 - `npm run lint`: passed without warnings.
-- `npm test`: all 47 geometry/navigation tests passed, including multi-floor grouping/elevations, sparse indices, invalid floor metadata, typed openings, section manipulation, collision constraints, walking vectors, and doorway traversal.
-- `npm run build`: passed. Vite reports a large lazy-loaded viewer chunk (~1,015 kB minified / 278 kB gzip), which includes the 3D engine. Further bundle optimization is optional.
+- `npm test`: all 43 geometry/navigation tests passed, including typed openings, section manipulation, collision constraints, walking vectors, and doorway traversal.
+- `npm run build`: passed. Vite reports a large lazy-loaded viewer chunk (~1,013 kB minified / 278 kB gzip), which includes the 3D engine. Further bundle optimization is optional.
 - `git diff --check`: passed.
 
 ## Browser checks
@@ -131,32 +131,3 @@ All 55 existing browser regression checks passed again. Eleven new walkthrough c
 11. Normal-motion fade entry and viewport resizing preserve eye height and return correctly to overview.
 
 No application console warnings or runtime errors were observed. Placement, first-person interior, and mobile screenshots were reviewed. Walking retains meter-scale timing on longer frames using collision substeps, and static walkthrough shadows are cached. The implementation adds no runtime dependency and does not change the backend schema. Scale remains explicitly unverified; flat floor/ceiling coverage and 2.7 m wall height are inferred assumptions. See `human-perspective.md`.
-
-
-## Multi-floor support and Vite asset fix
-
-The primary demo now imports `sample_output/house1_2floors.walls.json`: 80 elements, 34 on floor 0 and 46 on floor 1. The flat array supplies `floor` indices but no explicit height/elevation/room/slab records. The shared contract defines 2.7 m per floor; bases are 0 and 2.7 m, and the building top is 5.4 m. The sample picker retains the older apartment.
-
-The broken import referenced a nonexistent backend asset path after the backend moved its image under `assets/house0/`. Preview imports now use frontend-owned images in `src/assets/samples/`; Vite dev and production builds resolve and bundle all three previews. Backend fixture JSON files remain unchanged.
-
-All 66 previous browser regression checks passed after adapting example selection and the new **Entire floor** label. An additional 17 multi-floor checks passed in headless Chrome:
-
-1. Both actual fixture floors render with all 80 elements at the correct world-space elevations; preview assets load and the complete building frames around its full height.
-2. Floor 1 isolates/reframes; direct area drawing highlights a custom region and clips only its interior.
-3. Floor 2 isolates/reframes at Y = 2.7 m, starts with independent state, and creates a horizontal cut at the correct absolute height.
-4. The elevated horizontal cut handle updates the plane in real time.
-5. Elevated vertical X/Z cuts and the X-axis drag handle remain local to the chosen region.
-6. The elevated selection move handle updates bounds correctly.
-7. Returning between floors restores independent region/orientation settings; complete-building view retains both floors' own cuts.
-8. Floor 1 Human Perspective uses floor-level avatar feet and Y = 1.65 m eyes; navigation and overview/section restoration work.
-9. Floor 2 Human Perspective uses Y = 2.7 m avatar feet and Y = 4.35 m eyes; movement preserves that height and exit restores edits.
-10. Mobile floor navigation/cutting controls fit without horizontal overflow; screenshots were reviewed and navigation was integrated into the cutting sheet to preserve model space.
-11. The legacy apartment still loads with immediate single-floor cutting controls.
-12. The actual parse API response path validates and renders the exact two-floor fixture (intercepted backend response).
-13. Pointer-based human placement intersects the elevated floor and puts avatar feet at Y = 2.7 m.
-14. Selected architectural element lists persist independently per floor.
-15. A three-level response with sparse indices 0, 2, and 4 dynamically renders/selects the right levels at 0, 5.4, and 10.8 m, without inventing missing floors.
-16. Invalid negative floor metadata rejects replacement while preserving the selected floor and prior building.
-17. Legacy arrays lacking both `type` and `floor` still render as a single floor via the API path.
-
-Total: 47 unit tests and 83 browser checks passed. No application runtime errors were observed; full interaction suites reported no application console warnings. Build retains the known large viewer-chunk warning. Floor height and rectangular slab/ceiling coverage remain explicit assumptions. No live Claude request was made; that integration step above remains open. See `multi-floor.md` for the current workflow and contract.

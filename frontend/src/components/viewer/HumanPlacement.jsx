@@ -17,9 +17,9 @@ function HumanMarker({ placement }) {
   </group>
 }
 
-export default function HumanPlacement({ elevation = 0, world, placement, bridge, onPreview, onEnter, onCancel }) {
+export default function HumanPlacement({ world, placement, bridge, onPreview, onEnter, onCancel }) {
   const get = useThree(state => state.get)
-  const ground = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -elevation), [elevation])
+  const ground = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), 0), [])
   const latest = useRef(placement)
   const apiRef = useRef(null)
   useImperativeHandle(bridge, () => ({

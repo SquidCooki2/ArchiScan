@@ -8,7 +8,6 @@ export default function SceneHandle({ position, color = '#a5b4fc', name, ...even
   const [x, y, z] = position
   const target = useMemo(() => new THREE.Vector3(x, y, z), [x, y, z])
   useFrame(({ camera, viewport, size }) => {
-    mesh.current.getWorldPosition(target)
     mesh.current.scale.setScalar(viewport.getCurrentViewport(camera, target).height / size.height * 8)
   })
   return <mesh ref={mesh} name={name} position={position} renderOrder={5} {...events}>

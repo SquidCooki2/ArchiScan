@@ -20,7 +20,3 @@ The updated backend sample's typed walls/windows/doors are supported, including 
 - [x] Walkthrough verification: 14 navigation unit tests and 11 browser interaction checks; all prior regression suites pass.
 
 See `human-perspective.md` for physical assumptions and implementation details.
-
-- [x] Dynamic multi-floor rendering, floor isolation and camera fitting using the two-floor backend fixture.
-- [x] Independent per-floor cuts/regions/element selections and floor-relative Human Perspective.
-- [x] Frontend-bundled sample previews and a choice of house/apartment fixtures. See `multi-floor.md`.
