@@ -22,20 +22,26 @@ All structural parts rotate with their source element using the same image-right
 Furniture items have the schema `{ type, floor, x, z, rotation }` (no `width` or `depth` in the JSON) with `rotation` in `[0, 2π)` indicating the direction the **front** of the item faces (`0` = `+Z`/down, `π/2` = `+X`/right, `π` = `-Z`/up, `3π/2` = `-X`/left).
 
 ### Asset Mapping (`frontend/public/assets/furniture/`)
-The KayKit Furniture Bits `.gltf` + `.bin` + `furniturebits_texture.png` assets are stored in `frontend/public/assets/furniture/`:
-- `"couch"` → `couch.gltf` / `couch_pillows.gltf` (native size `3.0 × 1.22 × 1.6`)
-- `"chair"` → `chair_A.gltf` / `chair_A_wood.gltf` / `chair_B.gltf` / `armchair.gltf` (native size `0.75 × 1.26 × 0.85`)
-- `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf` (native size `3.1 × 1.0 × 3.0` double)
-- `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf` (native size `2.0 × 1.0 × 1.0`)
-- `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall (`shelf_A_big.gltf` is really a `2.0 × 0.4 × 0.5` wall shelf)
-- `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf` (native size `2.0 × 1.0 × 2.0`)
-- `"fridge"`, `"sink"`, `"toilet"`, `"bath"` → Not included as dedicated meshes in the KayKit pack; built from merged Three.js boxes and cylinders in `viewer/fixtureGeometry.js`, in the same palette.
+All 10 furniture and fixture types have dedicated 3D models in `frontend/public/assets/furniture/` (see `public/assets/furniture/SOURCES.md`; procedural fixture geometry in `viewer/fixtureGeometry.js` is replaced by the Kenney `.glb` fixture models):
+- **KayKit Furniture Bits (`*.gltf` + `*.bin` + `furniturebits_texture.png`):**
+  - `"couch"` → `couch.gltf` / `couch_pillows.gltf` (native size `3.0 × 1.22 × 1.6`)
+  - `"chair"` → `chair_A.gltf` / `chair_A_wood.gltf` / `chair_B.gltf` / `armchair.gltf` (native size `0.75 × 1.26 × 0.85`)
+  - `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf` (native size `3.1 × 1.0 × 3.0` double)
+  - `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf` (native size `2.0 × 1.0 × 1.0`)
+  - `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall (`shelf_A_big.gltf` is really a `2.0 × 0.4 × 0.5` wall shelf)
+  - `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf` (native size `2.0 × 1.0 × 2.0`)
+- **Kenney Kitchen & Bathroom Fixtures (`*.glb`):**
+  - `"fridge"` → `fridge.glb` (native size `0.52 × 0.92 × 0.36`, multi-node with `doorLeft`/`doorRight`)
+  - `"sink"` → `sink_kitchen.glb` (`0.43 × 0.39 × 0.43`) / `sink_bathroom.glb` (`0.43 × 0.55 × 0.30`)
+  - `"toilet"` → `toilet.glb` (native size `0.31 × 0.45 × 0.48`, multi-node with `cover`)
+  - `"bath"` → `bathtub.glb` (native size `1.19 × 0.30 × 0.56`)
 
 ### Sizing & Scale Normalization (Important)
-- **Raw GLTF dimensions are oversized relative to meter-scale rooms:** The `.gltf` files in `public/assets/furniture/` are authored in stylized game units roughly **1.4× to 1.6× larger than real-world meters** (for example, `bed_double_A.gltf` is `3.1 × 3.0` units and `couch.gltf` is `3.0 × 1.6` units, whereas rooms and `WALL_HEIGHT = 2.7` m are in true meters).
-- If rendered at `scale = 1`, furniture will appear too large and clip into walls or block doorways.
-- `lib/furniture.js` gives each type a real-world box in meters. `viewer/Furniture.jsx` fits the model's geometry to that box along each axis, centered in plan with its base flush on `y = floor * 2.7`.
-- All furniture is drawn in one basswood tone instead of the pack's texture, like the pieces in an architect's model.
+- **Opposite raw scales across the two asset packs:**
+  - **KayKit `.gltf` models** are authored roughly **1.5–2× larger than real-world meters** (e.g., `bed_double_A.gltf` is `3.1 × 3.0` units and `couch.gltf` is `3.0 × 1.6` units).
+  - **Kenney `.glb` fixture models** (`fridge.glb`, `sink_kitchen.glb`, `sink_bathroom.glb`, `toilet.glb`, `bathtub.glb`) are roughly **half real-world size** (e.g., `fridge.glb` is `0.92 m` tall as shipped) and have corner-anchored origins (`x` in `[-width, 0]`).
+- `lib/furniture.js` gives each type a real-world target box in meters. `viewer/Furniture.jsx` merges all mesh nodes in the loaded `.gltf`/`.glb` scene and fits the combined geometry to that box along each axis, centered in plan with its base flush on `y = floor * 2.7`.
+- All furniture is drawn in one basswood tone (`#c8b89f`, fixtures `#cfd4d8`) instead of the pack's texture, like the pieces in an architect's model.
 
 ## Validation and defaults
 
