@@ -7,18 +7,26 @@ import * as THREE from 'three'
 const VIEW_DIRECTION = new THREE.Vector3(0.3, 0.9, 1).normalize()
 
 /** Frames the model whenever `fitKey` changes. Any user drag cancels the glide. */
-export default function CameraRig({ bounds, fitKey, reducedMotion }) {
+export default function CameraRig({ bounds, height, fitKey, reducedMotion }) {
   const camera = useThree((s) => s.camera)
   const controls = useThree((s) => s.controls)
   const aspect = useThree((s) => s.size.width / s.size.height)
   const goal = useRef(null)
 
+  // Read at fit time only, so switching the roof style doesn't move the camera.
+  const heightRef = useRef(height)
+  useEffect(() => {
+    heightRef.current = height
+  })
+
   useEffect(() => {
     if (!controls) return
+    const h = heightRef.current ?? 0
     const portraitBoost = aspect < 1 ? 1 / aspect : 1
-    const distance = Math.max(bounds.size, 6) * 1.9 * Math.min(portraitBoost, 2)
-    // Aim slightly in front of center so the model sits above the section panel.
-    const target = new THREE.Vector3(0, 0, bounds.size * 0.12)
+    const distance = Math.max(bounds.size, h * 2, 6) * 1.9 * Math.min(portraitBoost, 2)
+    // Aim slightly in front of center and partway up, so a roofed model clears both the
+    // header and the controls panel.
+    const target = new THREE.Vector3(0, h * 0.3, bounds.size * 0.12)
     const position = target.clone().addScaledVector(VIEW_DIRECTION, distance)
 
     if (reducedMotion) {

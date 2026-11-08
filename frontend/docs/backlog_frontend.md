@@ -8,6 +8,7 @@
 - [x] Task 5: Implement clipping plane slider logic (toggle, slider, height readout).
 - [x] Task 6: Polish: error toast, loading overlay, hover/transition effects, wall caps, responsive check.
 - [ ] Task 7: End-to-end test with the real backend and real floorplans.
+- [x] Task 8: Roofs: Flat / Gable / Hip picker (default Gable), generated from the footprint, clipped by the section plane. See `docs/frontend_plan.md` section 9a.
 
 ## Notes
 - `THREE.Clock` deprecation warning in the console comes from `@react-three/fiber` 9.8.2 itself with three 0.187; it goes away when R3F updates.

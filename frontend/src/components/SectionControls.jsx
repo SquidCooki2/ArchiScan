@@ -1,7 +1,18 @@
-import { MIN_CUT_HEIGHT, PLAN_CUT_HEIGHT, WALL_HEIGHT } from '../lib/geometry'
+import { MIN_CUT_HEIGHT, PLAN_CUT_HEIGHT } from '../lib/geometry'
 import { ResetIcon } from './Icons'
+import RoofPicker from './RoofPicker'
 
-export default function SectionControls({ clipEnabled, clipHeight, onToggle, onHeight, onPlanCut, onReset }) {
+export default function SectionControls({
+  clipEnabled,
+  clipHeight,
+  maxHeight,
+  roofType,
+  onRoofType,
+  onToggle,
+  onHeight,
+  onPlanCut,
+  onReset,
+}) {
   const atPlanCut = clipEnabled && Math.abs(clipHeight - PLAN_CUT_HEIGHT) < 0.005
 
   return (
@@ -9,6 +20,9 @@ export default function SectionControls({ clipEnabled, clipHeight, onToggle, onH
       aria-labelledby="section-title"
       className="fixed bottom-4 left-1/2 z-30 w-[22rem] max-w-[calc(100vw-1.5rem)] -translate-x-1/2 rounded-2xl border border-white/10 bg-white/5 p-4 backdrop-blur-xl transition-all duration-500 ease-out starting:translate-y-4 starting:opacity-0 sm:bottom-6"
     >
+      <RoofPicker value={roofType} onChange={onRoofType} />
+      <hr className="my-4 border-white/10" />
+
       <div className="flex items-center justify-between gap-4">
         <h2 id="section-title" className="text-sm font-medium text-neutral-200">
           Section cut
@@ -40,7 +54,7 @@ export default function SectionControls({ clipEnabled, clipHeight, onToggle, onH
         >
           {clipHeight.toFixed(2)} m
         </output>
-        <span className="text-sm text-neutral-500 tabular-nums">of {WALL_HEIGHT.toFixed(2)} m wall height</span>
+        <span className="text-sm text-neutral-500 tabular-nums">of {maxHeight.toFixed(2)} m total height</span>
       </div>
 
       <label htmlFor="cut-height" className="sr-only">
@@ -50,7 +64,7 @@ export default function SectionControls({ clipEnabled, clipHeight, onToggle, onH
         id="cut-height"
         type="range"
         min={MIN_CUT_HEIGHT}
-        max={WALL_HEIGHT}
+        max={maxHeight}
         step={0.01}
         value={clipHeight}
         disabled={!clipEnabled}

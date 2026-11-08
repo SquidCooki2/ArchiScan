@@ -5,13 +5,25 @@ import * as THREE from 'three'
 import { WALL_HEIGHT, computeBounds } from '../../lib/geometry'
 import CameraRig from './CameraRig'
 import Floor from './Floor'
+import Roof from './Roof'
 import SectionPlane from './SectionPlane'
 import Walls from './Walls'
 
 /** Far above the walls: an "off" clipping plane that never cuts anything. */
 const NO_CUT = WALL_HEIGHT + 100
 
-export default function Viewer({ walls, modelKey, fitKey, clipEnabled, clipHeight, reducedMotion }) {
+export default function Viewer({
+  walls,
+  modelKey,
+  fitKey,
+  clipEnabled,
+  clipHeight,
+  maxHeight,
+  roofPlan,
+  roofType,
+  loadedAt,
+  reducedMotion,
+}) {
   const bounds = useMemo(() => computeBounds(walls), [walls])
 
   // One shared plane; the wall material and cap material both reference it.
@@ -64,7 +76,19 @@ export default function Viewer({ walls, modelKey, fitKey, clipEnabled, clipHeigh
         <Walls key={modelKey} walls={walls} bounds={bounds} plane={plane} reducedMotion={reducedMotion} />
       )}
 
-      {hasModel && clipEnabled && clipHeight < WALL_HEIGHT && (
+      {hasModel && (
+        <Roof
+          key={`${modelKey}-${roofType}`}
+          plan={roofPlan}
+          type={roofType}
+          bounds={bounds}
+          plane={plane}
+          loadedAt={loadedAt}
+          reducedMotion={reducedMotion}
+        />
+      )}
+
+      {hasModel && clipEnabled && clipHeight < maxHeight && (
         <SectionPlane bounds={bounds} height={clipHeight} />
       )}
 
@@ -75,7 +99,7 @@ export default function Viewer({ walls, modelKey, fitKey, clipEnabled, clipHeigh
         maxDistance={120}
         maxPolarAngle={Math.PI / 2 - 0.05}
       />
-      <CameraRig bounds={bounds} fitKey={fitKey} reducedMotion={reducedMotion} />
+      <CameraRig bounds={bounds} height={hasModel ? maxHeight : 0} fitKey={fitKey} reducedMotion={reducedMotion} />
     </Canvas>
   )
 }

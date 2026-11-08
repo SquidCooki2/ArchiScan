@@ -111,6 +111,17 @@ A `<mesh rotation-x={-Math.PI / 2}>` plane at `y = 0` slightly larger than the b
 *   Clipped walls appear hollow when cut. Provide a cap: render each wall also with a `BackSide` material in a flat accent colour (`side: THREE.BackSide`, same clipping plane) so the cut interior reads as a solid fill. Do this once the basics work (stretch goal).
 *   Optional stretch: a second slider or buttons to cut along X or Z axes.
 
+## 9a. Roofs (frontend only; no API change)
+*   The user picks **Flat**, **Gable**, or **Hip** in the controls panel (`RoofPicker.jsx`); the default is `DEFAULT_ROOF = 'gable'` in `lib/roof.js`.
+*   `computeRoofPlan(elements)` (in `lib/roof.js`) derives roof pieces from every element (walls, windows, doors):
+    1. Find the dominant wall direction so rotated plans still work.
+    2. Rasterize the elements at 0.1 m, close gaps up to ~1.2 m (doorways), flood-fill from outside to get the footprint.
+    3. Cover the footprint with up to 12 overlapping rectangles, largest first. Same-pitch roofs on overlapping rectangles meet in natural valleys (L-shaped houses).
+    4. If the outline isn't closed, fall back to one roof over the plan's bounds.
+*   `buildRoofGeometry(type, rect)` builds one closed solid per piece: 30° pitch, 0.3 m overhang, flat slabs 0.3 m thick. Gable ends use the wall material.
+*   `Roof.jsx` renders the pieces in the walls' centered group, sitting on `WALL_HEIGHT`, using the shared clipping plane plus a blueprint back-face cap. It drops in after the walls finish rising.
+*   The section slider's maximum is the top of the roof (`roofTopHeight(plan, type)`), so the cut can slice through the roof; the 1.2 m plan cut removes it entirely.
+
 ## 10. UI Components
 *   **Header:** fixed top bar, app name "ArchiScan", glass style, "New upload" button when `status === 'ready'`.
 *   **UploadZone:** dashed border `border-white/20`, `hover:border-indigo-400/60 hover:bg-white/10`, highlights on `dragover`. Hidden `<input type="file" accept="image/*">`; the whole zone is clickable and keyboard accessible (`role="button"`, `tabIndex={0}`, Enter/Space opens the dialog).

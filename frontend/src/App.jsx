@@ -10,10 +10,10 @@ import {
   ACCEPTED_TYPES,
   MAX_IMAGE_BYTES,
   PLAN_CUT_HEIGHT,
-  WALL_HEIGHT,
   computeBounds,
   formatBytes,
 } from './lib/geometry'
+import { DEFAULT_ROOF, computeRoofPlan, roofTopHeight } from './lib/roof'
 import { useReducedMotion } from './lib/useReducedMotion'
 
 function validateFile(file) {
@@ -39,7 +39,9 @@ export default function App() {
   const [fileName, setFileName] = useState('')
   const [pending, setPending] = useState(null) // { url, name } while scanning
   const [clipEnabled, setClipEnabled] = useState(false)
-  const [clipHeight, setClipHeight] = useState(WALL_HEIGHT)
+  const [clipHeight, setClipHeight] = useState(null) // null = top of the building (no cut)
+  const [roofType, setRoofType] = useState(DEFAULT_ROOF)
+  const [loadedAt, setLoadedAt] = useState(0) // when the current model appeared, for the roof drop-in
   const [modelKey, setModelKey] = useState(0)
   const [fitKey, setFitKey] = useState(0)
   const [dragging, setDragging] = useState(false)
@@ -49,6 +51,10 @@ export default function App() {
 
   const bounds = useMemo(() => computeBounds(walls), [walls])
   const hasModel = walls.length > 0
+
+  const roofPlan = useMemo(() => computeRoofPlan(walls), [walls])
+  const maxHeight = roofTopHeight(roofPlan, roofType)
+  const cutHeight = Math.min(clipHeight ?? maxHeight, maxHeight)
 
   // Revoke an uploaded image's object URL once it is replaced.
   useEffect(() => () => previewUrl && URL.revokeObjectURL(previewUrl), [previewUrl])
@@ -63,7 +69,8 @@ export default function App() {
     setModelKey((k) => k + 1)
     setFitKey((k) => k + 1)
     setClipEnabled(false)
-    setClipHeight(WALL_HEIGHT)
+    setClipHeight(null)
+    setLoadedAt(performance.now())
     setStatus('ready')
   }, [])
 
@@ -143,7 +150,7 @@ export default function App() {
   }, [])
 
   const toggleClip = () => {
-    if (!clipEnabled && clipHeight >= WALL_HEIGHT) setClipHeight(PLAN_CUT_HEIGHT)
+    if (!clipEnabled && cutHeight >= maxHeight) setClipHeight(PLAN_CUT_HEIGHT)
     setClipEnabled((v) => !v)
   }
   const planCut = () => {
@@ -152,7 +159,7 @@ export default function App() {
   }
   const resetView = () => {
     setClipEnabled(false)
-    setClipHeight(WALL_HEIGHT)
+    setClipHeight(null)
     setFitKey((k) => k + 1)
   }
 
@@ -170,7 +177,11 @@ export default function App() {
           modelKey={modelKey}
           fitKey={fitKey}
           clipEnabled={clipEnabled}
-          clipHeight={clipHeight}
+          clipHeight={cutHeight}
+          maxHeight={maxHeight}
+          roofPlan={roofPlan}
+          roofType={roofType}
+          loadedAt={loadedAt}
           reducedMotion={reducedMotion}
         />
       </div>
@@ -194,7 +205,10 @@ export default function App() {
           <h1 className="sr-only">3D model of {fileName}</h1>
           <SectionControls
             clipEnabled={clipEnabled}
-            clipHeight={clipHeight}
+            clipHeight={cutHeight}
+            maxHeight={maxHeight}
+            roofType={roofType}
+            onRoofType={setRoofType}
             onToggle={toggleClip}
             onHeight={setClipHeight}
             onPlanCut={planCut}

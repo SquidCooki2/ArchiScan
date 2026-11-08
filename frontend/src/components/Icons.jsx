@@ -69,6 +69,33 @@ export function ResetIcon(props) {
   )
 }
 
+export function FlatRoofIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M5 11v9h14v-9" />
+      <path d="M3 8h18v3H3z" />
+    </Icon>
+  )
+}
+
+export function GableRoofIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M5 11v9h14v-9" />
+      <path d="M2.5 12.5L12 4l9.5 8.5" />
+    </Icon>
+  )
+}
+
+export function HipRoofIcon(props) {
+  return (
+    <Icon {...props}>
+      <path d="M5 12v8h14v-8" />
+      <path d="M2.5 12.5L8 6h8l5.5 6.5z" />
+    </Icon>
+  )
+}
+
 export function SectionIcon(props) {
   return (
     <Icon {...props}>
