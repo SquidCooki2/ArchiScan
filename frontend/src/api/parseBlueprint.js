@@ -1,107 +1,73 @@
-import sampleWalls from '../samples/sampleWalls.json'
+import { backendSample } from '../samples/backendSample'
+import { validateWalls } from '../lib/geometry'
 
-const API_URL = import.meta.env.VITE_API_URL
-const TIMEOUT_MS = 150_000
-const MOCK_DELAY_MS = 1500
+export const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
+export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
+export const isMockMode = () => new URLSearchParams(window.location.search).get('mock') === '1' || !import.meta.env.VITE_API_URL?.trim()
 
-/** Mock mode: `?mock=1` in the URL, or no backend URL configured. */
-export function isMockMode() {
-  const params = new URLSearchParams(window.location.search)
-  return params.get('mock') === '1' || !API_URL
+export function validateFile(file) {
+  if (!file || !ACCEPTED_TYPES.includes(file.type)) throw new Error('Choose a PNG, JPEG, WebP, or GIF image.')
+  if (file.size > MAX_IMAGE_BYTES) throw new Error('This image is too large. Please choose a file of 5 MB or less.')
+  if (!file.size) throw new Error('This image is empty. Please choose another file.')
 }
 
-/** Reads a File into raw base64 (no `data:` prefix). */
-export function fileToBase64(file) {
+export function fileToBase64(file, signal) {
   return new Promise((resolve, reject) => {
     const reader = new FileReader()
-    reader.onload = () => {
-      const result = String(reader.result)
-      const comma = result.indexOf(',')
-      resolve({ base64: result.slice(comma + 1), mediaType: file.type })
-    }
-    reader.onerror = () => reject(new Error('Could not read the image file. Try exporting it again.'))
+    const cleanup = () => signal?.removeEventListener('abort', abort)
+    const abort = () => { reader.abort(); cleanup(); reject(new DOMException('Cancelled', 'AbortError')) }
+    reader.onload = () => { cleanup(); resolve({ base64: String(reader.result).split(',')[1], mediaType: file.type }) }
+    reader.onerror = () => { cleanup(); reject(new Error('Could not read this image. Please try another file.')) }
+    if (signal?.aborted) return abort()
+    signal?.addEventListener('abort', abort, { once: true })
     reader.readAsDataURL(file)
   })
 }
 
-export function getSampleWalls() {
-  return sampleWalls.map((w) => ({ ...w }))
-}
-
-function wait(ms, signal) {
+export function loadSample(signal) {
+  const sampleWalls = validateWalls(backendSample.walls)
   return new Promise((resolve, reject) => {
-    const id = setTimeout(resolve, ms)
-    signal?.addEventListener('abort', () => {
-      clearTimeout(id)
-      reject(new DOMException('Aborted', 'AbortError'))
-    })
+    const abort = () => { clearTimeout(timer); reject(new DOMException('Cancelled', 'AbortError')) }
+    const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(sampleWalls.map(w => ({ ...w }))) }, 1500)
+    if (signal?.aborted) return abort()
+    signal?.addEventListener('abort', abort, { once: true })
   })
 }
 
-function isWall(w) {
-  return (
-    w &&
-    typeof w === 'object' &&
-    ['x', 'z', 'width', 'depth', 'rotation'].every((k) => Number.isFinite(w[k])) &&
-    w.width > 0 &&
-    w.depth > 0
-  )
-}
-
-/**
- * Sends the floorplan to the backend and returns walls[].
- * Pass `signal` to let the user cancel; a cancelled call rejects with an AbortError.
- */
 export async function parseBlueprint(file, { signal } = {}) {
-  if (isMockMode()) {
-    await wait(MOCK_DELAY_MS, signal)
-    return getSampleWalls()
-  }
-
-  const { base64, mediaType } = await fileToBase64(file)
-
+  validateFile(file)
+  if (isMockMode()) return loadSample(signal)
   const controller = new AbortController()
   let timedOut = false
-  const timer = setTimeout(() => {
-    timedOut = true
-    controller.abort()
-  }, TIMEOUT_MS)
-  const onAbort = () => controller.abort()
-  signal?.addEventListener('abort', onAbort)
-
-  let res
+  const abort = () => controller.abort()
+  if (signal?.aborted) abort()
+  signal?.addEventListener('abort', abort, { once: true })
+  const timeout = setTimeout(() => { timedOut = true; controller.abort() }, 150_000)
   try {
-    res = await fetch(`${API_URL}/api/parse-blueprint`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ image: base64, mediaType }),
-      signal: controller.signal,
-    })
-  } catch (err) {
-    if (timedOut) {
-      throw new Error('The scan took longer than 150 seconds. Try a smaller or cleaner floorplan image.')
+    const { base64, mediaType } = await fileToBase64(file, controller.signal)
+    let response
+    try {
+      response = await fetch(`${import.meta.env.VITE_API_URL.trim().replace(/\/+$/, '')}/api/parse-blueprint`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ image: base64, mediaType }), signal: controller.signal,
+      })
+    } catch (error) {
+      if (controller.signal.aborted) throw error
+      throw new Error('Cannot reach the server. Check your connection and try again.')
     }
-    if (err.name === 'AbortError') throw err
-    throw new Error(`Cannot reach the server at ${API_URL}. Check that the backend is running.`)
+    let body
+    try { body = await response.json() } catch {
+      if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError')
+      throw new Error(response.ok ? 'The server returned an unreadable response.' : `Request failed (${response.status}). Please try again.`)
+    }
+    if (!response.ok) throw new Error(body?.error?.message ?? 'Request failed. Please try again.')
+    return validateWalls(body)
+  } catch (error) {
+    if (timedOut) throw new Error('Parsing took too long. Please try again with a smaller, clearer floorplan.')
+    if (controller.signal.aborted) throw new DOMException('Cancelled', 'AbortError')
+    throw error
   } finally {
-    clearTimeout(timer)
-    signal?.removeEventListener('abort', onAbort)
+    clearTimeout(timeout)
+    signal?.removeEventListener('abort', abort)
   }
-
-  let body = null
-  try {
-    body = await res.json()
-  } catch {
-    // Non-JSON body; handled below.
-  }
-
-  if (!res.ok) {
-    throw new Error(body?.error?.message ?? `Request failed (${res.status}).`)
-  }
-
-  const walls = Array.isArray(body) ? body.filter(isWall) : []
-  if (!walls.length) {
-    throw new Error('No walls were found in this image. Try a clearer floorplan with visible wall lines.')
-  }
-  return walls
 }
