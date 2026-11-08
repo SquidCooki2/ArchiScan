@@ -120,18 +120,23 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
     *   **Walking (`lib/walkthrough.js`):** `buildWalkBuilding` makes one collision world per floor. `walkStep` moves between them past the middle of a flight, and `walkHeight` gives the height of the step underfoot, which the camera eases toward. Colliders make the flight a corridor, closed at the end you can't leave by on that floor. A flight with no floor above it is solid.
 
 ### Furniture Models & Sizing Caveat (`public/assets/furniture/`)
-*   Static 3D furniture assets (KayKit Furniture Bits `.gltf` + `.bin` + `furniturebits_texture.png`) live in `frontend/public/assets/furniture/` and are loaded via Drei's `useGLTF('/assets/furniture/<name>.gltf')`:
-    *   `"couch"` → `couch.gltf` (or `couch_pillows.gltf`), native bounding box `[3.0, 1.22, 1.6]`
-    *   `"chair"` → `chair_A.gltf` (or `chair_A_wood.gltf`, `chair_B.gltf`, `armchair.gltf`), native bounding box `[0.75, 1.26, 0.85]`
-    *   `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf`, native bounding box `[3.1, 1.0, 3.0]` (double)
-    *   `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf`, native bounding box `[2.0, 1.0, 1.0]`
-    *   `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall. `shelf_A_big.gltf` is really a wall shelf of `[2.0, 0.4, 0.5]`, so it isn't used.
-    *   `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf`, native bounding box `[2.0, 1.0, 2.0]`
-    *   **Fixtures not in the KayKit pack (`"fridge"`, `"sink"`, `"toilet"`, `"bath"`):** Render clean procedural Three.js box/cylinder groups (or fallback cabinet/shelf GLTFs) styled to match the architectural model.
-*   **IMPORTANT — Model Sizing / Scale Normalization:**
-    *   The raw `.gltf` assets in `public/assets/furniture/` are authored in stylized game units roughly **1.4× to 1.6× larger than real-world meters** (e.g., `bed_double_A.gltf` is `3.1 × 3.0` units and `couch.gltf` is `3.0 × 1.6` units, whereas floorplan walls use true meters with `WALL_HEIGHT = 2.7` m).
-    *   Rendering the GLTFs at `scale={1}` would make furniture look oversized and clip into adjacent walls or doorways. `lib/furniture.js` lists a real-world box in meters per type, and `viewer/Furniture.jsx` fits each model's geometry to it: recentered in plan, standing on `y = 0`, scaled per axis.
-*   **Rendering (`viewer/Furniture.jsx`, `viewer/fixtureGeometry.js`):** one `instancedMesh` per type. Fixtures are merged boxes and cylinders built to their boxes. Boxes at the final size stand in while models load, and stay if they can't load. All furniture shares one basswood tone (`#c8b89f`, fixtures `#cfd4d8`) in place of the pack's texture, so it reads as part of the white card model and procedural fixtures match. Materials use the same clipping planes as the slabs, so every cut applies. Model front is `+Z`; `rotation.y = item.rotation`.
+*   All 10 furniture and fixture types now have dedicated 3D models in `frontend/public/assets/furniture/` (see `public/assets/furniture/SOURCES.md`; procedural fixture geometry is no longer needed once wired to the `.glb` files):
+    *   **KayKit Furniture Bits (`*.gltf` + `*.bin` + `furniturebits_texture.png`):**
+        *   `"couch"` → `couch.gltf` (or `couch_pillows.gltf`), native bounding box `[3.0, 1.22, 1.6]`
+        *   `"chair"` → `chair_A.gltf` (or `chair_A_wood.gltf`, `chair_B.gltf`, `armchair.gltf`), native bounding box `[0.75, 1.26, 0.85]`
+        *   `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf`, native bounding box `[3.1, 1.0, 3.0]` (double)
+        *   `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf`, native bounding box `[2.0, 1.0, 1.0]`
+        *   `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall. `shelf_A_big.gltf` is really a wall shelf of `[2.0, 0.4, 0.5]`, so it isn't used.
+        *   `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf`, native bounding box `[2.0, 1.0, 2.0]`
+    *   **Kenney Kitchen & Bathroom Fixtures (`*.glb`):**
+        *   `"fridge"` → `fridge.glb`, native bounding box `[0.52, 0.92, 0.36]`
+        *   `"sink"` → `sink_kitchen.glb` (`[0.43, 0.39, 0.43]`) / `sink_bathroom.glb` (`[0.43, 0.55, 0.30]`)
+        *   `"toilet"` → `toilet.glb`, native bounding box `[0.31, 0.45, 0.48]`
+        *   `"bath"` → `bathtub.glb`, native bounding box `[1.19, 0.30, 0.56]`
+*   **IMPORTANT — Model Sizing & Pivot Normalization:**
+    *   **KayKit `.gltf` models** are authored roughly **1.5–2× larger than real-world meters** (scale down `~0.55×`), while **Kenney `.glb` fixture models** (`fridge.glb`, `sink_kitchen.glb`, `sink_bathroom.glb`, `toilet.glb`, `bathtub.glb`) are roughly **half real-world size** (scale up `~2×`, e.g., `fridge.glb` is `0.92 m` tall as shipped) and have corner-anchored origins (`x` in `[-width, 0]`).
+    *   `lib/furniture.js` lists a real-world target box in meters per type, and `viewer/Furniture.jsx` fits each loaded GLTF/GLB model's geometry (recursively merging child meshes when a `.glb` has multiple nodes like `doorLeft`/`doorRight` on `fridge.glb` or `cover` on `toilet.glb`) to that box: recentered in plan, standing on `y = 0`, and scaled per axis.
+*   **Rendering (`viewer/Furniture.jsx`):** one `instancedMesh` per type using the loaded `.gltf`/`.glb` geometry (replacing procedural `viewer/fixtureGeometry.js`). Boxes at the final size stand in while models load, and stay if they can't load. All furniture shares one basswood tone (`#c8b89f`, fixtures `#cfd4d8`) in place of the pack's texture, so it reads as part of the white card model. Materials use the same clipping planes as the slabs, so every cut applies. Model front is `+Z`; `rotation.y = item.rotation`.
 *   **Explore** has a Furniture switch. Walking and escape routes always show furniture, since it's in the way.
 
 ### Floor (`Floor.jsx`)
