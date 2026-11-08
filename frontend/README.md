@@ -42,6 +42,8 @@ On wider screens, click the plan in the bottom left corner to expand it. Click a
 
 Drop an image anywhere to build a new model. For more than one floor, select one image per floor.
 
+To skip reading a drawing, upload or drop a plan saved as JSON instead. It opens straight away in the browser, with no backend or Claude call. Use a file from `sample_output/`, the format the backend returns, or a model JSON from the Export menu, which also brings back its name and roof. A JSON plan has no drawing, so the plan thumbnail doesn't show. The Escape route tab's optional written explanation still goes to the backend if you ask for it.
+
 ## Bill of materials and export
 
 The BoM tab adds up the plan by floor, in metric or imperial. It opens on the estimated cost, floor areas, and a first look at daylight, exit door and stair figures. Materials, wall types, doors and windows, and rooms fold out from there, with amounts to order and a price for each. Measured rows come from the drawing. Framing, boards, paint and slab assume a typical light-frame house, and each row says how it was worked out.

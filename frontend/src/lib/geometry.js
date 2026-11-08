@@ -67,7 +67,7 @@ export function computeBounds(elements) {
 
 const isNumber = Number.isFinite
 
-function validElement(element) {
+export function validElement(element) {
   if (!element || (element.floor !== undefined && (!Number.isInteger(element.floor) || element.floor < 0))) return false
   if (!ELEMENT_TYPES.includes(element.type === undefined ? 'wall' : element.type)) return false
   if (!isNumber(element.x) || !isNumber(element.z) || !isNumber(element.rotation)) return false
