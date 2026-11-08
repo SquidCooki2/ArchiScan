@@ -15,7 +15,7 @@
 
 - [x] Task 12: Merge main. Render multi-floor models: stacked walls, floor slabs, roof on the top floor, floor picker, one image per floor on upload.
 - [x] Task 13: Clarity pass. One mode switch (Explore, Walk, Escape route), one panel per mode, simplified cuts and walk start, new visual design.
-- [ ] Task 14: Stairs. Procedurally generate 3D stepped geometry from `{ type: "stairs", floor, x, z, width, depth, rotation }` climbing from `floor` to `floor + 1`, cut the stairwell opening in `FloorSlabs.jsx`, and connect floors for walking and escape routes.
-- [ ] Task 15: Furniture rendering & scale normalization. Load the GLTF assets in `public/assets/furniture/` (plus procedural/fallback meshes for `fridge`, `sink`, `toilet`, `bath`), normalize their scale (~0.6x–0.65x or target bounding-box dimensions in meters since the raw GLTF units are ~1.5x oversized), orient them using `[0, 2π)` facing `rotation`, and attach section clipping planes.
+- [x] Task 14: Stairs. Procedurally generate 3D stepped geometry from `{ type: "stairs", floor, x, z, width, depth, rotation }` climbing from `floor` to `floor + 1`, cut the stairwell opening in `FloorSlabs.jsx`, and connect floors for walking and escape routes.
+- [x] Task 15: Furniture rendering & scale normalization. Load the GLTF assets in `public/assets/furniture/` (plus procedural/fallback meshes for `fridge`, `sink`, `toilet`, `bath`), normalize their scale (~0.6x–0.65x or target bounding-box dimensions in meters since the raw GLTF units are ~1.5x oversized), orient them using `[0, 2π)` facing `rotation`, and attach section clipping planes.
 
 See `verification.md` for checks and limitations, `section-view.md` for cuts, `human-perspective.md` for walking, and `architectural-elements.md` for windows and doors.
