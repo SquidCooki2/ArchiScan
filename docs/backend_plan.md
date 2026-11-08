@@ -71,12 +71,13 @@ Accepts either a single floor image or an `images` array for multi-floor buildin
 *   `mediaType`: one of `image/png`, `image/jpeg`, `image/webp`, `image/gif`. Default `image/png` if omitted and not derivable.
 *   Multi-floor processing: parse all floor images in parallel via `Promise.all`, tagging each floor's validated elements with `"floor": floorIndex` (`0`, `1`, ...) before flattening into a single array.
 
-**Success `200`:** a bare JSON array of architectural elements (`"wall"`, `"window"`, `"door"`, with `"floor": 0, 1, ...`, units in **meters**, see Coordinate Convention):
+**Success `200`:** a bare JSON array of architectural and furniture elements (`"wall"`, `"window"`, `"door"`, `"stairs"`, plus the 10 furniture types, with `"floor": 0, 1, ...`, units in **meters**, see Coordinate Convention):
 ```json
 [
   { "type": "wall", "floor": 0, "x": 0.95, "z": 0.12, "width": 1.9, "depth": 0.24, "rotation": 0 },
   { "type": "window", "floor": 0, "x": 2.9, "z": 0.12, "width": 2.0, "depth": 0.24, "rotation": 0, "sillHeight": 0.9, "height": 1.2 },
-  { "type": "door", "floor": 1, "x": 6.0, "z": 0.12, "width": 0.9, "depth": 0.24, "rotation": 0, "sillHeight": 0, "height": 2.1 }
+  { "type": "door", "floor": 1, "x": 6.0, "z": 0.12, "width": 0.9, "depth": 0.24, "rotation": 0, "sillHeight": 0, "height": 2.1 },
+  { "type": "couch", "floor": 0, "x": 2.4, "z": 3.1, "rotation": 1.571 }
 ]
 ```
 **Error responses** always use the shape `{ "error": { "code": "<MACHINE_CODE>", "message": "<human text>" } }`:
@@ -103,6 +104,8 @@ Accepts either a single floor image or an `images` array for multi-floor buildin
     *   `"wall"`: solid full-height wall segment. If `type` is omitted, `validateWalls` defaults it to `"wall"`.
     *   `"window"`: placed in the opening between wall segments, matching the host wall's `depth` and `rotation`. Includes `sillHeight` (default `0.9` m) and `height` (default `1.2` m).
     *   `"door"`: placed in the doorway opening between wall segments, matching the host wall's `depth` and `rotation`. Includes `sillHeight` (default `0` m) and `height` (default `2.1` m).
+    *   `"stairs"`: emitted only on the lower floor where the staircase ascends (`UP`); `"DN"` stairs on upper floors are ignored so the staircase is not duplicated across floors. Includes `x, z, width, depth` (`width` = run length along travel direction, `depth` = tread width) and `rotation` in `[0, 2π)` indicating the ascending (`UP`) direction (`0` = `+Z`/down, `π/2` = `+X`/right, `π` = `-Z`/up, `3π/2` = `-X`/left).
+    *   **Furniture (`"couch" | "chair" | "fridge" | "sink" | "bed" | "wardrobe" | "cabinet" | "toilet" | "table" | "bath"`):** placed at center `(x, z)` on `floor`. Because the frontend renders fixed-size 3D models, furniture items omit `width` and `depth`. Their `rotation` is normalized into `[0, 2π)` indicating the direction the front of the item faces (`0` = `+Z`/down, `π/2` = `+X`/right, `π` = `-Z`/up, `3π/2` = `-X`/left). Common aliases (`"cabinets"`, `"bathtub"`, `"sofa"`, `"closet"`, `"staircase"`, etc.) are mapped to their canonical type in `validateWalls`.
 
 ## 7. Claude Integration (`services/claude.js`)
 *   Instantiate once: `new Anthropic({ apiKey: config.anthropicApiKey, timeout: 120000, maxRetries: 2 })`.
