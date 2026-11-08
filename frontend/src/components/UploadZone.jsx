@@ -11,7 +11,7 @@ export default function UploadZone({ onBrowse, onSample, dragging = false }) {
       <span className="text-sm font-medium text-white/90">{dragging ? 'Drop your floorplan here' : 'Drop your floorplan here, or browse'}</span>
       <span className="text-xs text-white/35">PNG, JPG, WebP or GIF · Up to 5 MB</span>
     </button>
-    <button type="button" onClick={onSample} className="mt-5 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 transition-colors hover:text-indigo-200 focus-visible:outline-2 focus-visible:outline-indigo-400">Just exploring? Try a sample space <Icon name="arrow" className="size-4" /></button>
+    <button type="button" onClick={onSample} className="mt-5 inline-flex items-center gap-2 rounded-lg px-3 py-2 text-xs text-white/50 transition-colors hover:text-indigo-200 focus-visible:outline-2 focus-visible:outline-indigo-400">Explore the backend sample <Icon name="arrow" className="size-4" /></button>
     <div className="mt-8 flex flex-wrap justify-center gap-x-5 gap-y-2 text-[10px] tracking-wide text-white/30"><span>01 / Upload a plan</span><span>02 / Explore in 3D</span><span>03 / Reveal a section</span></div>
   </section>
 }

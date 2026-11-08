@@ -18,7 +18,7 @@ export default function LoadingOverlay({ previewUrl, onCancel, sample }) {
         <div className="absolute inset-0 border-t-2 border-indigo-300 motion-safe:animate-spin" />
       </div>
       <h2 id="loading-title" className="text-xl font-light tracking-tight" role="status">{sample ? 'Opening sample space…' : messages[step]}</h2>
-      <p className="mt-3 text-xs leading-5 text-white/40">{sample ? 'An L-shaped space, ready to explore.' : 'A little detail takes a little time. Complex plans may take up to 150 seconds.'}</p>
+      <p className="mt-3 text-xs leading-5 text-white/40">{sample ? 'Loading the saved apartment wall model.' : 'A little detail takes a little time. Complex plans may take up to 150 seconds.'}</p>
       <button autoFocus type="button" onClick={onCancel} className="mt-6 rounded-lg px-4 py-2 text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-indigo-400">Cancel</button>
     </div>
   </div>

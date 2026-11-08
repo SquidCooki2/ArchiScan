@@ -9,4 +9,4 @@
 - [x] Task 6: Toasts, loading preview, transitions, horizontal wall caps, narrow-screen checks.
 - [ ] Task 7: Real-backend end-to-end test with actual floorplans. Backend API arrived in the merge; live Claude integration still needs verification.
 
-See `verification.md` for checks and limitations. Optional X/Z cutting is outside the core horizontal-section scope.
+See `verification.md` for checks and limitations. The requested section-view extension adds X/Z cuts, direction reversal, selected walls, and precise rectangular area cuts; see `section-view.md`.

@@ -1,4 +1,4 @@
-import sampleWalls from '../samples/sampleWalls.json'
+import { backendSample } from '../samples/backendSample'
 import { validateWalls } from '../lib/geometry'
 
 export const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
@@ -25,6 +25,7 @@ export function fileToBase64(file, signal) {
 }
 
 export function loadSample(signal) {
+  const sampleWalls = validateWalls(backendSample.walls)
   return new Promise((resolve, reject) => {
     const abort = () => { clearTimeout(timer); reject(new DOMException('Cancelled', 'AbortError')) }
     const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(sampleWalls.map(w => ({ ...w }))) }, 1500)

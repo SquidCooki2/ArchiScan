@@ -45,6 +45,17 @@ test('bad server geometry is rejected before reaching the renderer', () => {
   assert.deepEqual(validateWalls([wall]), [wall])
 })
 
+test('saved backend apartment output renders unchanged, including rounded vertical rotations', () => {
+  const walls = JSON.parse(readFileSync(new URL('../../sample_output/apartment_furnished_preview.walls.json', import.meta.url)))
+  assert.equal(validateWalls(walls), walls)
+  assert.equal(walls.length, 17)
+  assert.ok(walls.some(wall => wall.rotation === 1.571))
+  const bounds = computeBounds(walls)
+  assert.ok(Math.abs(bounds.width - 11.96) < 0.003)
+  assert.ok(Math.abs(bounds.depth - 9.62) < 0.003)
+  assert.ok(Object.values(bounds).every(Number.isFinite))
+})
+
 test('empty scene bounds are finite before the first upload', () => {
   assert.ok(Object.values(computeBounds([])).every(Number.isFinite))
 })
