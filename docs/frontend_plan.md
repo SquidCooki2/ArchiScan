@@ -114,10 +114,8 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
 *   **Stairs are generated procedurally by the frontend** (there is no static stair `.gltf` model).
 *   For each element with `type === 'stairs'` (`{ type: 'stairs', floor, x, z, width, depth, rotation }`):
     *   `width` is the horizontal run length along the direction of ascent; `depth` is the tread width perpendicular to travel; `rotation` in `[0, 2π)` is the ascending (`UP`) direction (`0` = `+Z`, `π/2` = `+X`, `π` = `-Z`, `3π/2` = `-X`).
-    *   Generate `N = Math.max(8, Math.round(WALL_HEIGHT / 0.18))` steps (15 for a 2.7 m story) climbing from `y = floor * WALL_HEIGHT` to `y = (floor + 1) * WALL_HEIGHT`. Each step `i` (`0..N-1`) is a solid prism of tread length `width / N` and height `(i + 1) * (WALL_HEIGHT / N)`, from `-width / 2` to `+width / 2` along the ascending axis. Prisms merge into one mesh per material, so a flight costs a few draw calls.
-    *   Strings and glass guards run up both sides, leaving the lowest 0.7 m of the flight open so one that lands against a wall can still be stepped off. A glass guard surrounds the stairwell upstairs, open at the head of the flight (`structuralElements`).
-    *   **Upper floor slab cutout:** `FloorSlabs.jsx` builds each slab as an extruded shape with one hole per flight arriving from below, held inside the slab's edge (`stairwellCorners`).
-    *   **Walking (`lib/walkthrough.js`):** `buildWalkBuilding` makes one collision world per floor. `walkStep` moves between them past the middle of a flight, and `walkHeight` gives the height of the step underfoot, which the camera eases toward. Colliders make the flight a corridor, closed at the end you can't leave by on that floor. A flight with no floor above it is solid.
+    *   Generate `N = Math.max(8, Math.round(WALL_HEIGHT / 0.18))` steps (typically 15 steps for a 2.7 m story height) climbing from `y = floor * WALL_HEIGHT` to `y = (floor + 1) * WALL_HEIGHT`. Each step `i` (`0..N-1`) is a box of tread length `width / N`, width `depth`, and height `(i + 1) * (WALL_HEIGHT / N)` (or individual riser/tread prisms on a sloped stringer) progressing from `-width / 2` to `+width / 2` along the ascending axis.
+    *   **Upper floor slab cutout:** In `FloorSlabs.jsx`, subtract or split the slab at `floor + 1` around the staircase's `(x, z, width, depth, rotation)` rectangle so the stairwell opening is unobstructed when viewing or walking between floors.
 
 ### Furniture Models & Sizing Caveat (`public/assets/furniture/`)
 *   Static 3D furniture assets (KayKit Furniture Bits `.gltf` + `.bin` + `furniturebits_texture.png`) live in `frontend/public/assets/furniture/` and are loaded via Drei's `useGLTF('/assets/furniture/<name>.gltf')`:
@@ -125,14 +123,12 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
     *   `"chair"` → `chair_A.gltf` (or `chair_A_wood.gltf`, `chair_B.gltf`, `armchair.gltf`), native bounding box `[0.75, 1.26, 0.85]`
     *   `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf`, native bounding box `[3.1, 1.0, 3.0]` (double)
     *   `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf`, native bounding box `[2.0, 1.0, 1.0]`
-    *   `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall. `shelf_A_big.gltf` is really a wall shelf of `[2.0, 0.4, 0.5]`, so it isn't used.
+    *   `"wardrobe"` → `shelf_A_big.gltf` (or `cabinet_medium.gltf`), native bounding box `[2.0, 2.0, 0.75]`
     *   `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf`, native bounding box `[2.0, 1.0, 2.0]`
     *   **Fixtures not in the KayKit pack (`"fridge"`, `"sink"`, `"toilet"`, `"bath"`):** Render clean procedural Three.js box/cylinder groups (or fallback cabinet/shelf GLTFs) styled to match the architectural model.
 *   **IMPORTANT — Model Sizing / Scale Normalization:**
     *   The raw `.gltf` assets in `public/assets/furniture/` are authored in stylized game units roughly **1.4× to 1.6× larger than real-world meters** (e.g., `bed_double_A.gltf` is `3.1 × 3.0` units and `couch.gltf` is `3.0 × 1.6` units, whereas floorplan walls use true meters with `WALL_HEIGHT = 2.7` m).
-    *   Rendering the GLTFs at `scale={1}` would make furniture look oversized and clip into adjacent walls or doorways. `lib/furniture.js` lists a real-world box in meters per type, and `viewer/Furniture.jsx` fits each model's geometry to it: recentered in plan, standing on `y = 0`, scaled per axis.
-*   **Rendering (`viewer/Furniture.jsx`, `viewer/fixtureGeometry.js`):** one `instancedMesh` per type. Fixtures are merged boxes and cylinders built to their boxes. Boxes at the final size stand in while models load, and stay if they can't load. All furniture shares one basswood tone (`#c8b89f`, fixtures `#cfd4d8`) in place of the pack's texture, so it reads as part of the white card model and procedural fixtures match. Materials use the same clipping planes as the slabs, so every cut applies. Model front is `+Z`; `rotation.y = item.rotation`.
-*   **Explore** has a Furniture switch. Walking and escape routes always show furniture, since it's in the way.
+    *   Rendering the GLTFs at `scale={1}` will make furniture look oversized and clip into adjacent walls or doorways. Apply a per-type target height/footprint normalization (computing a `THREE.Box3().setFromObject(scene)` on the cloned GLTF and scaling to a realistic meter size, or applying an approximate uniform `scale={0.6}`–`0.65` multiplier) and attach the active `clippingPlanes` to every mesh material in the cloned GLTF scene.
 
 ### Floor (`Floor.jsx`)
 A `<mesh rotation-x={-Math.PI / 2}>` plane at `y = 0` slightly larger than the bounds (`size + 4`), dark material that receives shadows, plus Drei `<Grid infiniteGrid fadeDistance={40} cellColor="#333" sectionColor="#555" />`.
