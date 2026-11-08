@@ -193,3 +193,18 @@ The DXF and CSV haven't been opened in AutoCAD, Revit, or Excel themselves. Assu
 - The sample house comes to about $56,100 in metric and $55,900 in imperial, a difference caused only by rounding up each order in its own units.
 
 Concrete, OSB sheathing, drywall, and shingles were compared with published 2026 figures on November 8, 2026, from sources of mixed quality. Everything else is a general estimate that hasn't been checked against a supplier. The total isn't a construction budget, because it leaves out labor, tax, delivery, roof framing, wiring, and HVAC.
+
+## Expanding the plan thumbnail
+
+`npm test` passes 150 frontend tests. Lint and the production build are clean. These checks ran in headless Chrome with real mouse and keyboard input, on both samples, at 1440 × 900 and 1024 × 700, with resizing down to 700 px wide while open.
+
+- With the animation frozen at exact times on the sample house, the card starts at the thumbnail's exact position and size, and lands back on it to within 0.1 px. The image keeps its shape at every time checked and stays inside its card. Frame sampling on the apartment agrees.
+- Closing partway through opening continues from exactly where it was, 0.00 px away.
+- Click, Enter, Space, Esc, the Close button, the scrim, and the image all work, in all four tabs. Focus goes to Close on opening and back to the thumbnail on closing.
+- The view opened 3 to 7 ms after the click, with no clicks lost in 12 tries. Closing and reopening at once stays open.
+- Esc doesn't reach the app behind the open view, even after Tab moves focus out of the dialog, and works normally again after closing.
+- Dragging a file in closes the view, so the drop feedback isn't hidden. With reduced motion on, the view opens and closes with no movement.
+
+In one early run, a first Enter press didn't leave the view open. A late `close` event could have shut a reopened view, so that's now guarded, and it hasn't happened again in later runs, including 6 repeats of the same keys. The cause wasn't proven.
+
+Smoothness itself wasn't measured. The headless browser draws the 3D scene in software at 6 or 7 frames per second, so it needs a look on a real graphics card. Safari, Firefox, and real touch weren't tested. The thumbnail still only shows from 1024 px wide, so phones and most tablets don't have this view.

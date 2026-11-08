@@ -15,7 +15,8 @@ import ExplorePanel from './components/ExplorePanel'
 import Header, { Wordmark } from './components/Header'
 import Landing from './components/Landing'
 import LoadingOverlay from './components/LoadingOverlay'
-import { ModelTitle, PlanCard } from './components/ModelInfo'
+import ModelTitle from './components/ModelInfo'
+import PlanCard from './components/PlanCard'
 import { WalkControls, WalkStart } from './components/WalkPanel'
 
 const Viewer = lazy(() => import('./components/viewer/Viewer'))
@@ -212,7 +213,7 @@ export default function App() {
       <input ref={input} type="file" multiple accept={ACCEPTED_TYPES.join(',')} className="hidden" aria-label="Upload floor plans" onChange={event => { const files = [...event.target.files]; event.target.value = ''; if (files.length) open({ files }) }} />
       {!hasModel && <Landing onBrowse={browse} onSample={sampleId => open({ sampleId })} samples={[SAMPLES.house, SAMPLES.apartment]} />}
       {hasModel && humanMode !== 'human' && <ModelTitle name={model.name} counts={counts} bounds={bounds} floors={floors} demoUpload={model.demoUpload} />}
-      {hasModel && humanMode !== 'human' && <PlanCard previewUrl={model.previews[planFloor] ?? model.previews[0]} caption={planCaption} hint={hint} />}
+      {hasModel && humanMode !== 'human' && <PlanCard previewUrl={model.previews[planFloor] ?? model.previews[0]} caption={planCaption} hint={hint} dismiss={loading || dragging} />}
       {hasModel && mode === 'explore' && <ExplorePanel floors={floors} floor={floorView} onFloor={changeFloor} roofType={roofType} onRoof={setRoofType} cut={cut} onResetView={resetCamera} hasFurniture={counts.furniture > 0} showFurniture={showFurniture} onShowFurniture={setShowFurniture} />}
       {hasModel && humanMode === 'placing' && <WalkStart floors={floors} floor={walkFloor} onFloor={changeFloor} placement={humanPlacement} onMiddle={startInMiddle} />}
       {hasModel && humanMode === 'human' && <WalkControls movement={humanMovement} transitioning={humanTransition} onRepick={leaveWalk} floor={floors > 1 ? humanFloor : null} locked={humanLocked} stairs={humanStairs} />}

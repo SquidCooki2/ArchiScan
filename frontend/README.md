@@ -38,6 +38,8 @@ The switch at the top chooses what you're doing with the model.
 - **Walk:** click the floor to start walking there. Use W A S D or the arrow keys, and move the mouse to look. Esc shows the pointer again, and Esc once more leaves. On touch screens, drag to look and hold the on-screen arrows. Walk up or down the stairs to change floors. See `docs/human-perspective.md`.
 - **Escape route:** set where the fire and the person are, by room or by clicking. Arrows on the floor show the way out, down the stairs from upper floors. If the stairs are cut off, they lead to a window to signal from.
 
+On wider screens, click the plan in the bottom left corner to expand it. Click anywhere, press Esc, or choose **Close** to shrink it back.
+
 Drop an image anywhere to build a new model. For more than one floor, select one image per floor.
 
 ## Bill of materials and export

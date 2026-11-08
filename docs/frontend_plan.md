@@ -31,6 +31,7 @@ src/
 │   ├── Header.jsx
 │   ├── Landing.jsx           # first screen: upload and samples, with drop anywhere
 │   ├── LoadingOverlay.jsx
+│   ├── PlanCard.jsx          # the original drawing, which expands from its thumbnail
 │   ├── ErrorToast.jsx
 │   ├── ExplorePanel.jsx      # floors, roof, cut slider, more options
 │   ├── WalkPanel.jsx         # choosing a spot, then walking controls
@@ -48,6 +49,7 @@ src/
 ├── lib/
 │   ├── geometry.js           # computeBounds(walls), constants
 │   ├── billOfMaterials.js    # quantities, schedules and checks from the plan
+│   ├── expandPlan.js         # geometry for the expanding drawing
 │   ├── exports.js            # CSV, DXF and JSON files
 │   ├── prices.js             # rough unit prices for the bill
 │   ├── settleFurniture.js    # moves or trims furniture clear of walls, stairs and each other
@@ -154,6 +156,13 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
 *   Plaster, weatherboard siding, oak planks and roof shingles are painted once onto canvases in the browser, so the model needs no image downloads. `surfaceUvs` gives every triangle texture coordinates in meters, so a pattern keeps its scale and runs on across pieces.
 *   Walls are plaster inside and siding outside: `Walls.jsx` sorts each piece's faces by whether they look out of the building, and gives each set its own material. Floors and stair treads are planks. Roof slopes are shingles and gable ends are siding. Escape mode keeps a plain floor so the route arrows stay readable.
 *   **Clean joins:** `elementParts` squares quarter turns stored as `1.571`, corners are welded to a 0.1 mm grid, and a slightly slimmer hidden core reaches past each wall piece and stair side to fill the gaps plans leave by rounding to the centimeter. `Viewer.jsx` uses a logarithmic depth buffer, because otherwise the hidden end faces at each join show through as hairlines. That also means `polygonOffset` has no effect, and the ground's shadow plane must not write depth or it hides the grid.
+
+### Expanding the plan (`PlanCard.jsx`, `lib/expandPlan.js`)
+*   Clicking the thumbnail grows it into a large view on the scrim, and closing shrinks it back to the same spot. Click anywhere, press Esc, or use Close to go back.
+*   The white card and the drawing are separate layers, each transformed from its measured thumbnail position. The card can change shape while the drawing keeps its proportions. Only transforms, opacity, and the card's corner radius animate.
+*   Closing starts from wherever the animation is, so it can change direction mid-flight. It closes on a timer too, so it never depends on an animation ending.
+*   A native `<dialog>` handles the modal behavior: focus stays inside, the rest of the page is inert, and focus returns to the thumbnail. It sits outside the thumbnail's wrapper, which is hidden on narrow screens. Esc is stopped at the window while it's open, so it can't also cancel something behind it.
+*   Dragging a file in or loading a model closes it at once, since those would otherwise happen behind it. Reduced motion opens and closes it with no movement.
 
 ### Bill of materials (`lib/billOfMaterials.js`, `BomPanel.jsx`)
 *   The BoM tab turns the loaded plan into a takeoff. `measureBuilding` does the slow measuring once per model, using the same floor grid and room numbers as the escape route. `billOfMaterials` then applies the chosen floor and roof, and `displayQuantity` and `orderQuantity` apply metric or imperial.

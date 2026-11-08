@@ -21,5 +21,6 @@
 - [x] Task 17: Homely finish. Text-only wordmark and icon-free tabs, furniture settled clear of walls, warmer fixtures, and painted plaster, siding, plank and shingle textures with clean wall joins.
 - [x] Task 18: Renamed to ArchiTech. BoM tab with quantities, schedules, and first-look checks. Export to CSV, DXF, and JSON.
 - [x] Task 19: Shortened the BoM panel into folding sections at the usual panel width. Added estimated prices to the panel and exports.
+- [x] Task 20: Clicking the plan thumbnail grows it into a large view, and closing shrinks it back to the same spot.
 
 See `verification.md` for checks and limitations, `section-view.md` for cuts, `human-perspective.md` for walking, and `architectural-elements.md` for windows and doors.
