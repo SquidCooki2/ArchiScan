@@ -41,8 +41,8 @@ src/
 │   └── viewer/
 │       ├── Viewer.jsx        # <Canvas>, lights, camera, controls, environment
 │       ├── Walls.jsx         # maps walls[] -> meshes, centered group
-│       ├── Floor.jsx         # ground plane / grid sized to model bounds
-│       ├── surfaces.js       # plaster, siding, planks and shingles painted in the browser
+│       ├── Floor.jsx         # lawn, shadows and grid around the model
+│       ├── surfaces.js       # plaster, siding, planks, grass and shingles painted in the browser
 │       ├── furnitureGeometry.js  # merges, colors and fits a furniture model
 │       ├── fixtureFinishes.js    # porcelain, brass, oak and towels for the fixtures
 │       └── SectionPlane.jsx  # (optional) translucent visual of the cut plane
@@ -51,6 +51,7 @@ src/
 │   ├── billOfMaterials.js    # quantities, schedules and checks from the plan
 │   ├── expandPlan.js         # geometry for the expanding drawing
 │   ├── exports.js            # CSV, DXF and JSON files
+│   ├── footprint.js          # the outline a floor follows, traced from the exterior walls
 │   ├── planFile.js           # checks and opens a plan saved as JSON, without the backend
 │   ├── prices.js             # rough unit prices for the bill
 │   ├── settleFurniture.js    # moves or trims furniture clear of walls, stairs and each other
@@ -129,7 +130,7 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
     *   `width` is the horizontal run length along the direction of ascent; `depth` is the tread width perpendicular to travel; `rotation` in `[0, 2π)` is the ascending (`UP`) direction (`0` = `+Z`, `π/2` = `+X`, `π` = `-Z`, `3π/2` = `-X`).
     *   Generate `N = Math.max(8, Math.round(WALL_HEIGHT / 0.18))` steps (15 for a 2.7 m story) climbing from `y = floor * WALL_HEIGHT` to `y = (floor + 1) * WALL_HEIGHT`. Each step `i` (`0..N-1`) is a solid prism of tread length `width / N` and height `(i + 1) * (WALL_HEIGHT / N)`, from `-width / 2` to `+width / 2` along the ascending axis. Prisms merge into one mesh per material, so a flight costs a few draw calls.
     *   Strings and a handrail on slim posts run up both sides, leaving the lowest 0.7 m of the flight open so one that lands against a wall can still be stepped off. The handrail is one prism with a `slope`, sheared to the pitch of the flight in `Walls.jsx`. A low curb, posts and a flat rail surround the stairwell upstairs, open at the head of the flight (`structuralElements`). None of it is glass.
-    *   **Upper floor slab cutout:** `FloorSlabs.jsx` builds each slab as an extruded shape with one hole per flight arriving from below, held inside the slab's edge (`stairwellCorners`).
+    *   **Upper floor slab cutout:** `FloorSlabs.jsx` builds each slab as an extruded shape with one hole per flight arriving from below, held inside the slab's edge (`stairwellCorners`). An opening that runs past the floor's outline becomes a notch in it instead.
     *   **Walking (`lib/walkthrough.js`):** `buildWalkBuilding` makes one collision world per floor. `walkStep` moves between them past the middle of a flight, and `walkHeight` gives the height of the step underfoot, which the camera eases toward. Heading roughly along a flight, `walkStep` follows it and eases toward the middle, so a diagonal approach still climbs. Between a flight's sides only they collide, so a wall overlapping the flight by a few cm can't hold anyone. `stairHint` names the flight just ahead for the walking controls. Colliders make the flight a corridor, closed at the end you can't leave by on that floor. A flight with no floor above it is solid.
 
 ### Furniture Models & Sizing Caveat (`public/assets/furniture/`)
@@ -178,7 +179,9 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
 *   The Export button in the header downloads, for the whole building: a CSV of the bill and schedules (Excel, Google Sheets, Numbers), a DXF of the floor plans (R12, AIA layer names, meters, floors side by side, for AutoCAD, Revit, SketchUp, ArchiCAD), and a JSON of the elements and quantities. The CSV uses the chosen units and roof, and guards against spreadsheet formula injection from file names.
 
 ### Floor (`Floor.jsx`)
-A `<mesh rotation-x={-Math.PI / 2}>` plane at `y = 0` slightly larger than the bounds (`size + 4`), dark material that receives shadows, plus Drei `<Grid infiniteGrid fadeDistance={40} cellColor="#333" sectionColor="#555" />`.
+A lawn around and under the house, with a soft rounded edge: 3.5 m of grass past the walls, a smaller patch on the landing page so it stays clear of the text, and a wide field while walking. Beyond it, a shadow plane and a Drei `<Grid infiniteGrid />`. The Escape route tab leaves the lawn out, because its glowing arrows need a plain, dark surface.
+
+Floor slabs follow `floorOutlines` in `lib/footprint.js`, so they stop under the exterior walls and the lawn shows in any notch. The outline comes from the roof's footprint, traced at 5 cm and stepped in one cell so its edge lands inside a wall. It can't tell a closed courtyard from a room, or a notch under about 1.2 m wide from a doorway, so both stay floored. Walls that don't close into a building fall back to the bounding rectangle.
 
 ## 9. Section View (clipping plane)
 *   Compute `totalHeight = (maxFloor + 1) * WALL_HEIGHT` (where `maxFloor = Math.max(0, ...walls.map(w => w.floor ?? 0))`).

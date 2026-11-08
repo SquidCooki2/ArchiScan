@@ -68,7 +68,7 @@ export default function Viewer({ walls, hero = false, modelKey, floor = 'all', s
         <Lightformer position={[0, 8, 0]} rotation-x={Math.PI / 2} scale={[15, 15, 1]} intensity={1.5} />
         <Lightformer position={[-8, 4, 0]} rotation-y={Math.PI / 2} scale={[10, 6, 1]} color="#c9d6e6" intensity={1} />
       </Environment>
-      <Floor bounds={bounds} walkthrough={walking} />
+      <Floor bounds={bounds} walkthrough={walking} lawn={!escaping} hero={hero} />
       <Walls key={modelKey} walls={walls} bounds={bounds} section={section} area={usesCutTools ? area : null} openDoors={walking || escaping} visibleFloor={shownFloor} />
       <FloorSlabs walls={walls} bounds={bounds} section={section} cut={cut} region={region} visibleFloor={shownFloor} ground={!escaping} boards={!escaping} walking={walking} />
       {!hero && (showFurniture || walking || looksDown) && <Furniture key={`furniture-${modelKey}`} walls={walls} bounds={bounds} section={section} cut={cut} region={region} visibleFloor={shownFloor} reducedMotion={reducedMotion} />}

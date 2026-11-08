@@ -89,6 +89,41 @@ function paintSidingHeight(context, size) {
   }
 }
 
+/** A mown lawn: soft patches of lighter and darker green, under thousands of short blades. */
+function paintGrass(context, size) {
+  const random = seeded(71)
+  context.fillStyle = 'hsl(98 34% 31%)'
+  context.fillRect(0, 0, size, size)
+  for (let p = 0; p < 40; p++) {
+    const x = random() * size, y = random() * size, radius = size * (0.08 + random() * 0.14)
+    const color = `${88 + random() * 22} ${28 + random() * 14}% ${24 + random() * 15}%`
+    // Painted a tile away in every direction too, so a patch running off one edge comes back on the other.
+    for (const dx of [-size, 0, size]) {
+      for (const dy of [-size, 0, size]) {
+        const gradient = context.createRadialGradient(x + dx, y + dy, 0, x + dx, y + dy, radius)
+        gradient.addColorStop(0, `hsl(${color} / 0.3)`)
+        gradient.addColorStop(1, `hsl(${color} / 0)`)
+        context.fillStyle = gradient
+        context.fillRect(x + dx - radius, y + dy - radius, radius * 2, radius * 2)
+      }
+    }
+  }
+  context.lineCap = 'round'
+  for (let b = 0; b < 26000; b++) {
+    const x = random() * size, y = random() * size
+    const length = size * (0.006 + random() * 0.012), lean = (random() - 0.5) * 2.4 - Math.PI / 2
+    context.strokeStyle = `hsl(${84 + random() * 28} ${30 + random() * 22}% ${22 + random() * 24}% / ${0.3 + random() * 0.4})`
+    context.lineWidth = 0.8 + random() * 1.2
+    context.beginPath()
+    for (const [dx, dy] of [[0, 0], [x < length ? size : 0, 0], [0, y < length ? size : 0]]) {
+      context.moveTo(x + dx, y + dy)
+      context.lineTo(x + dx + Math.cos(lean) * length, y + dy + Math.sin(lean) * length)
+    }
+    context.stroke()
+  }
+  speckle(context, size, random, 0, 9)
+}
+
 const PLANK_ROWS = 12
 /** Warm oak boards with staggered joints and a little grain. Boards run along X. */
 function paintPlanks(context, size) {
@@ -157,6 +192,7 @@ export function surfaces() {
     siding: tile(512, 1.28, paintSiding, THREE.SRGBColorSpace),
     sidingHeight: tile(256, 1.28, paintSidingHeight, THREE.NoColorSpace),
     planks: tile(1024, 2.4, paintPlanks, THREE.SRGBColorSpace),
+    grass: tile(1024, 5, paintGrass, THREE.SRGBColorSpace),
     shingles: tile(1024, 2.4, paintShingles, THREE.SRGBColorSpace),
     shingleHeight: tile(512, 2.4, (context, size) => paintShingles(context, size, true), THREE.NoColorSpace),
   }
