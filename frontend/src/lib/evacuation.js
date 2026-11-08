@@ -1,4 +1,6 @@
-import { computeBounds } from './geometry.js'
+import { elementFloor, computeBounds, floorBase, floorCount, isEnclosure, isFurniture, isStairs, stairRect, WALL_HEIGHT } from './geometry.js'
+import { STAIR_STEPS } from './elementParts.js'
+import { routeObstacles } from './furniture.js'
 import { rasterizeFootprint, toFrame } from './roof.js'
 
 /**
@@ -11,6 +13,12 @@ import { rasterizeFootprint, toFrame } from './roof.js'
  *   buildEvacuationMap(elements)  static: grid, building footprint, rooms, doors, windows
  *   computeFireField(map, fire)   walking distance from the fire to every cell
  *   planEvacuation(map, fire, person)  the route, its backup, and the written steps
+ *
+ * Buildings with several floors add a layer on top, joined by their stairs:
+ *
+ *   buildEvacuationBuilding(elements)  one map per floor, plus the flights between them
+ *   computeFireFields(building, fire)  the fire's walking distance on every floor
+ *   planEscape(building, fire, person)  the whole way out, down the stairs
  */
 
 /** No route comes closer to the fire than this, in meters of walking distance. */
@@ -29,6 +37,9 @@ const WALL_COMFORT = 0.45 // routes drift toward the middle of a corridor within
 const CLEAR_OF_BUILDING = 1.2 // a route ends this far outside the footprint
 const MIN_ROOM_AREA = 1.5
 const WALKING_SPEED = 1.2 // meters per second
+const WINDOW_REACH = 1.2 // how far from a window's sill someone can still reach it
+const LANDING = 0.35 // where a route joins a flight, this far out from its end
+const STAIR_SLOWDOWN = 1.5 // a flight takes this much longer than its length on the flat
 
 const SOLID = 1
 const DOOR = 2
@@ -130,8 +141,10 @@ function search(map, start, { open, stepCost, isGoal }) {
   const distance = new Float64Array(nx * nz).fill(Infinity)
   const previous = new Int32Array(nx * nz).fill(-1)
   const heap = createHeap()
-  distance[start] = 0
-  heap.push(0, start)
+  // Either one cell, or [cell, distance] pairs when the search continues from another floor.
+  for (const [k, d] of Array.isArray(start) ? start : [[start, 0]]) {
+    if (d < distance[k]) { distance[k] = d; heap.push(d, k) }
+  }
   while (heap.size) {
     const k = heap.pop()
     if (isGoal?.(k)) return { goal: k, distance, previous }
@@ -223,7 +236,7 @@ function findRooms(map) {
  * ({ x, z, width, depth, rotation }), ready for furniture. They block routes but don't split rooms.
  */
 export function buildEvacuationMap(allElements, { obstacles = [], floor = 0 } = {}) {
-  const elements = allElements.filter(element => (element.floor ?? 0) === floor)
+  const elements = allElements.filter(element => isEnclosure(element) && elementFloor(element) === floor)
   const bounds = computeBounds(elements)
   const spanX = bounds.width + 2 * MARGIN, spanZ = bounds.depth + 2 * MARGIN
   const cell = Math.max(CELL, Math.sqrt((spanX * spanZ) / MAX_CELLS))
@@ -269,7 +282,9 @@ export function buildEvacuationMap(allElements, { obstacles = [], floor = 0 } = 
     if (insideAt(a) === insideAt(b)) return []
     const [standA, standB] = sides(window, window.depth / 2 + CLEARANCE + 0.15)
     const stand = insideAt(a) ? standA : standB
-    const k = nearestCell(map, stand, 0.4, n => map.clearance[n] >= CLEARANCE && map.inside[n] === 1)
+    // A desk under the window doesn't rule it out: stand beside the desk, as long as it's the same room.
+    const standCell = cellIndex(map, stand), room = standCell < 0 ? -1 : map.roomOf[standCell]
+    const k = nearestCell(map, stand, WINDOW_REACH, n => map.clearance[n] >= CLEARANCE && map.inside[n] === 1 && (room < 0 || map.roomOf[n] === room))
     return k < 0 ? [] : [{ x: window.x, z: window.z, cell: k }]
   })
   return map
@@ -353,9 +368,10 @@ export function samplePath(points, spacing, offset = spacing / 2) {
     const length = Math.hypot(b.x - a.x, b.z - a.z)
     if (!length) continue
     const dx = (b.x - a.x) / length, dz = (b.z - a.z) / length
+    const ya = a.y ?? 0, slope = ((b.y ?? 0) - ya) / length
     while (next <= walked + length) {
       const t = next - walked
-      samples.push({ x: a.x + dx * t, z: a.z + dz * t, dx, dz, along: next })
+      samples.push({ x: a.x + dx * t, y: ya + slope * t, z: a.z + dz * t, dx, dz, slope, along: next })
       next += spacing
     }
     walked += length
@@ -380,6 +396,14 @@ function readPath(map, points, fireField) {
 }
 
 const meters = value => `${value.toFixed(1)} m`
+
+const costOfStep = (map, fireField, fireRoom) => k => {
+  const clearance = map.clearance[k], burn = fireField[k]
+  return 1
+    + (clearance < WALL_COMFORT ? (WALL_COMFORT - clearance) * 4 : 0)
+    + (burn < SMOKE_RADIUS ? 6 * (1 - burn / SMOKE_RADIUS) ** 2 : 0)
+    + (fireRoom && map.roomOf[k] === fireRoom.id ? 0.5 : 0)
+}
 
 function routeSteps({ crossings, length, exit }) {
   const steps = []
@@ -417,22 +441,16 @@ function buildRoute(map, found, open, fireField) {
  *   'window'  a window is the safer way out: the doors are cut off, or too close to the fire
  *   'shelter' nothing can be reached: stay put and signal
  */
-export function planEvacuation(map, fire, person, fireField = computeFireField(map, fire)) {
+export function planEvacuation(map, fire, person, fireField = computeFireField(map, fire), { fireHere = true } = {}) {
   const start = nearestCell(map, person, 1, n => map.clearance[n] >= CLEARANCE)
-  const fireRoom = roomAt(map, fire)
+  const fireRoom = fireHere ? roomAt(map, fire) : null
   const personRoom = roomAt(map, person)
   const startFire = start >= 0 ? fireField[start] : Infinity
   const nearFire = startFire < HAZARD_RADIUS
   // Someone already inside the danger zone may walk through it, but only away from the fire.
   const limit = Math.min(HAZARD_RADIUS, startFire - 0.01)
   const open = k => k >= 0 && map.clearance[k] >= CLEARANCE && fireField[k] >= limit
-  const stepCost = k => {
-    const clearance = map.clearance[k], burn = fireField[k]
-    return 1
-      + (clearance < WALL_COMFORT ? (WALL_COMFORT - clearance) * 4 : 0)
-      + (burn < SMOKE_RADIUS ? 6 * (1 - burn / SMOKE_RADIUS) ** 2 : 0)
-      + (fireRoom && map.roomOf[k] === fireRoom.id ? 0.5 : 0)
-  }
+  const stepCost = costOfStep(map, fireField, fireRoom)
   const blockedExits = map.doors.filter(door => {
     if (!door.exterior) return false
     const k = cellIndex(map, door)
@@ -468,4 +486,184 @@ export function planEvacuation(map, fire, person, fireField = computeFireField(m
     return windowResult({ backup: route, doorTooClose: route.minFireDistance })
   }
   return { ...base, status: 'route', route, backup: windowPlan, steps: routeSteps(route), seconds: route.length / WALKING_SPEED }
+}
+
+const floorName = floor => `Floor ${floor + 1}`
+
+/** Stairs the walls can reach at both ends, in plan coordinates. */
+function connectFloors(elements, maps) {
+  return elements.filter(element => isStairs(element) && elementFloor(element) + 1 < maps.length).flatMap(stair => {
+    const rect = stairRect(stair), floor = elementFloor(stair)
+    const ux = Math.cos(rect.rotation), uz = Math.sin(rect.rotation)
+    const along = distance => ({ x: stair.x + ux * distance, z: stair.z + uz * distance })
+    const halfRun = stair.width / 2
+    const stand = (map, point) => nearestCell(map, point, 1, n => map.inside[n] === 1 && map.clearance[n] >= CLEARANCE)
+    const footCell = stand(maps[floor], along(-halfRun - LANDING)), headCell = stand(maps[floor + 1], along(halfRun + LANDING))
+    if (footCell < 0 || headCell < 0) return []
+    return [{ floor, footCell, headCell, foot: cellCenter(maps[floor], footCell), head: cellCenter(maps[floor + 1], headCell), run: stair.width, along, halfRun }]
+  })
+}
+
+/**
+ * Routing data for a whole building. Each floor gets its own map, with fixed furniture and every
+ * flight touching it as obstacles: below, the flight is solid; above, it's a hole in the floor.
+ * Room numbers run on across floors, so a room's name and `key` identify it anywhere.
+ */
+export function buildEvacuationBuilding(elements, { furniture = true } = {}) {
+  const floors = floorCount(elements)
+  const flights = elements.filter(isStairs)
+  const maps = Array.from({ length: floors }, (_, floor) => buildEvacuationMap(elements, { floor, obstacles: [
+    ...(furniture ? routeObstacles(elements, floor) : []),
+    ...flights.filter(stair => [floor, floor - 1].includes(elementFloor(stair))).map(stairRect),
+  ] }))
+  let count = 0
+  maps.forEach((map, floor) => map.rooms.forEach(room => {
+    room.floor = floor
+    room.key = floor * 1000 + room.id
+    room.name = `Room ${++count}`
+  }))
+  return { elements, floors, maps, links: connectFloors(elements, maps), hasFurniture: furniture && elements.some(isFurniture) }
+}
+
+export const buildingRooms = building => building.maps.flatMap(map => map.rooms)
+
+/** The fire's walking distance on each floor. It reaches other floors only by the stairs. */
+export function computeFireFields(building, fire) {
+  const { maps, links } = building
+  const fields = maps.map(() => null)
+  fields[fire.floor] = computeFireField(maps[fire.floor], fire)
+  const spread = (floor, seeds) => { fields[floor] = search(maps[floor], seeds, { open: n => maps[floor].clearance[n] > 0 }).distance }
+  for (let floor = fire.floor + 1; floor < maps.length; floor++) {
+    spread(floor, links.filter(link => link.floor === floor - 1).map(link => [link.headCell, fields[floor - 1][link.footCell] + link.run]))
+  }
+  for (let floor = fire.floor - 1; floor >= 0; floor--) {
+    spread(floor, links.filter(link => link.floor === floor).map(link => [link.footCell, fields[floor + 1][link.headCell] + link.run]))
+  }
+  return fields
+}
+
+const atHeight = (points, floor) => points.map(point => ({ x: point.x, z: point.z, y: floorBase(floor), floor }))
+
+/** The way down a flight, along the front edges of its steps, so arrows clear every tread. */
+function flightPoints(link) {
+  const base = floorBase(link.floor), upper = floorBase(link.floor + 1)
+  const tread = (link.halfRun * 2) / STAIR_STEPS
+  return [
+    { ...link.head, y: upper, floor: link.floor + 1 },
+    { ...link.along(link.halfRun), y: upper, floor: link.floor + 1 },
+    { ...link.along(link.halfRun - tread), y: upper, floor: link.floor + 1 },
+    { ...link.along(-link.halfRun), y: base + WALL_HEIGHT / STAIR_STEPS, floor: link.floor },
+    { ...link.foot, y: base, floor: link.floor },
+  ]
+}
+
+/** Walking a floor toward the stairs: door by door, then down. */
+function floorSteps({ crossings, total }, nextFloor) {
+  const steps = []
+  let from = 0
+  for (const { along } of crossings) {
+    steps.push(`Walk ${meters(along - from)} to the door. Go through it and close it behind you.`)
+    from = along
+  }
+  steps.push(`Walk ${meters(Math.max(total - from, 0))} to the stairs. Go down to ${floorName(nextFloor)}.`)
+  return steps
+}
+
+/**
+ * The way out from an upper floor. Routes only ever go down: climbing away from a fire would leave
+ * someone with further to come back through it. Tries each flight and keeps the shortest whole way.
+ */
+function descend(building, fire, fields, floor, start, limit) {
+  const { maps, links } = building
+  const map = maps[floor], field = fields[floor]
+  const fireRoom = fire.floor === floor ? roomAt(map, fire) : null
+  const open = k => k >= 0 && map.inside[k] === 1 && map.clearance[k] >= CLEARANCE && field[k] >= limit
+  const found = search(map, start, { open, stepCost: costOfStep(map, field, fireRoom) })
+  let best = null
+  for (const link of links.filter(candidate => candidate.floor === floor - 1)) {
+    const lower = link.floor
+    if (found.distance[link.headCell] === Infinity || fields[lower][link.footCell] < HAZARD_RADIUS) continue
+    const rest = lower === 0
+      ? planEvacuation(maps[0], fire, link.foot, fields[0], { fireHere: fire.floor === 0 })
+      : descend(building, fire, fields, lower, link.footCell, HAZARD_RADIUS)
+    if (!rest?.route) continue
+    const cost = found.distance[link.headCell] + link.run * STAIR_SLOWDOWN + rest.route.length
+    if (!best || cost < best.cost) best = { cost, link, rest }
+  }
+  if (!best) return null
+  const { link, rest } = best
+  const leg = buildRoute(map, { goal: link.headCell, previous: found.previous }, open, field)
+  const passesFire = Boolean(fireRoom && samplePath(leg.points, 0.1, 0).some(sample => map.roomOf[cellIndex(map, sample)] === fireRoom.id))
+  const flight = Math.hypot(link.run, WALL_HEIGHT)
+  return {
+    ...rest,
+    stepGroups: [{ floor, steps: floorSteps(leg, link.floor) }, ...(rest.stepGroups ?? [{ floor: link.floor, steps: rest.steps }])],
+    route: {
+      ...rest.route,
+      points: [...atHeight(leg.points, floor), ...flightPoints(link), ...rest.route.points.map(point => (point.y === undefined ? { ...point, y: floorBase(link.floor), floor: link.floor } : point))],
+      length: leg.total + flight + rest.route.length,
+      minFireDistance: Math.min(leg.minFireDistance, rest.route.minFireDistance),
+      throughFireRoom: passesFire || rest.route.throughFireRoom,
+      flights: (rest.route.flights ?? 0) + 1,
+      landings: [{ floor, ...link.head, label: `Down to ${floorName(link.floor)}` }, { floor: link.floor, ...link.foot, label: `From ${floorName(floor)}` }, ...(rest.route.landings ?? [])],
+      seconds: (leg.total + flight * STAIR_SLOWDOWN + rest.route.length) / WALKING_SPEED,
+    },
+  }
+}
+
+/** From an upper floor with no way down: reach a window people outside can see. */
+function windowToSignalFrom(map, field, fireRoom, floor, start, limit) {
+  const open = k => k >= 0 && map.inside[k] === 1 && map.clearance[k] >= CLEARANCE && field[k] >= limit
+  const cells = new Set(map.windows.map(window => window.cell).filter(open))
+  if (!cells.size) return null
+  const found = search(map, start, { open, stepCost: costOfStep(map, field, fireRoom), isGoal: k => cells.has(k) })
+  if (found.goal < 0) return null
+  const built = buildRoute(map, found, open, field)
+  return { ...built, points: atHeight(built.points, floor), length: built.total, exit: 'window', throughFireRoom: false, flights: 0, landings: [] }
+}
+
+function planFrom(building, fire, person, fields) {
+  const { maps, links } = building
+  const map = maps[person.floor], field = fields[person.floor]
+  const fireRoom = fire.floor === person.floor ? roomAt(map, fire) : null
+  const shared = { fireFloor: fire.floor, personFloor: person.floor }
+  const roomsKnown = { fireRoom: roomAt(maps[fire.floor], fire), personRoom: roomAt(map, person) }
+  if (person.floor === 0) {
+    const plan = planEvacuation(maps[0], fire, person, field, { fireHere: fire.floor === 0 })
+    return { ...plan, ...shared, ...roomsKnown, stepGroups: [{ floor: 0, steps: plan.steps }] }
+  }
+  const start = nearestCell(map, person, 1, n => map.inside[n] === 1 && map.clearance[n] >= CLEARANCE)
+  const startFire = start >= 0 ? field[start] : Infinity
+  const nearFire = startFire < HAZARD_RADIUS
+  const limit = Math.min(HAZARD_RADIUS, startFire - 0.01)
+  const base = { ...shared, ...roomsKnown, nearFire, blockedExits: [], stairsCutOff: false }
+  const shelter = extra => ({ ...base, ...extra, status: 'shelter', route: null, backup: null, steps: SHELTER_STEPS, stepGroups: [{ floor: person.floor, steps: SHELTER_STEPS }] })
+  if (start < 0) return shelter()
+
+  const signal = windowToSignalFrom(map, field, fireRoom, person.floor, start, limit)
+  const way = descend(building, fire, fields, person.floor, start, limit)
+  if (way) {
+    const steps = way.stepGroups.flatMap(group => group.steps)
+    return { ...way, ...base, blockedExits: way.blockedExits, status: way.status, doorTooClose: way.doorTooClose, steps, seconds: way.route.seconds, backup: signal && { ...signal, signal: true } }
+  }
+  const stairsCutOff = links.some(link => link.floor + 1 === person.floor)
+  if (!signal) return shelter({ stairsCutOff })
+  const steps = [
+    `Walk ${meters(signal.length)} to the window. Close any door behind you on the way.`,
+    `Open the window and signal for help. Call emergency services and say you are on ${floorName(person.floor)}.`,
+  ]
+  return { ...base, stairsCutOff, status: 'signal', route: signal, backup: null, steps, stepGroups: [{ floor: person.floor, steps }], seconds: signal.length / WALKING_SPEED }
+}
+
+/**
+ * The plan for a fire and a person anywhere in the building, as `{ x, z, floor }`. On top of what
+ * planEvacuation gives, `status` can be 'signal': upstairs with the stairs cut off, go to a window.
+ * If furniture is all that stands in the way, the route goes past it and says so.
+ */
+export function planEscape(building, fire, person, fields = computeFireFields(building, fire)) {
+  const plan = planFrom(building, fire, person, fields)
+  if (!building.hasFurniture || plan.status === 'route' || plan.status === 'window') return plan
+  building.clear ??= buildEvacuationBuilding(building.elements, { furniture: false })
+  const clear = planFrom(building.clear, fire, person, computeFireFields(building.clear, fire))
+  return clear.status === 'route' || clear.status === 'window' ? { ...clear, pastFurniture: true } : plan
 }

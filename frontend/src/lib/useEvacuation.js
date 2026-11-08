@@ -1,12 +1,13 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { requestEvacuationBrief } from '../api/evacuationBrief'
-import { buildEvacuationMap, computeFireField, planEvacuation, snapToFloor } from './evacuation'
+import { buildEvacuationBuilding, computeFireFields, planEscape, snapToFloor } from './evacuation'
 
 const IDLE_BRIEF = { status: 'idle' }
 
 /** State for the escape route mode: where the fire and the person are, and the resulting plan. */
 export function useEvacuation(walls) {
   const [active, setActive] = useState(false)
+  const [floor, setFloor] = useState(0)
   const [fire, setFire] = useState(null)
   const [person, setPerson] = useState(null)
   const [placing, setPlacing] = useState(null)
@@ -14,9 +15,11 @@ export function useEvacuation(walls) {
   const [brief, setBrief] = useState(IDLE_BRIEF)
   const request = useRef(null)
 
-  const map = useMemo(() => (active && walls.length ? buildEvacuationMap(walls) : null), [active, walls])
-  const fireField = useMemo(() => (map && fire ? computeFireField(map, fire) : null), [map, fire])
-  const plan = useMemo(() => (map && fire && person ? planEvacuation(map, fire, person, fireField) : null), [map, fire, person, fireField])
+  const building = useMemo(() => (active && walls.length ? buildEvacuationBuilding(walls) : null), [active, walls])
+  const fireFields = useMemo(() => (building && fire ? computeFireFields(building, fire) : null), [building, fire])
+  const plan = useMemo(() => (building && fire && person ? planEscape(building, fire, person, fireFields) : null), [building, fire, person, fireFields])
+  const map = building?.maps[floor] ?? null
+  const fireField = fireFields?.[floor] ?? null
 
   const dropBrief = useCallback(() => {
     request.current?.abort()
@@ -49,6 +52,7 @@ export function useEvacuation(walls) {
   }, [reset])
   const leave = useCallback(() => {
     reset()
+    setFloor(0)
     setActive(false)
   }, [reset])
 
@@ -57,10 +61,10 @@ export function useEvacuation(walls) {
     if (!map) return false
     const snapped = snapToFloor(map, point)
     if (!snapped) return false
-    setters[kind](snapped)
+    setters[kind]({ ...snapped, floor })
     dropBrief()
     return true
-  }, [map, setters, dropBrief])
+  }, [map, floor, setters, dropBrief])
 
   /** A click or tap on the floor while placing. Moves on to whatever is still unplaced. */
   const place = useCallback(point => {
@@ -70,17 +74,22 @@ export function useEvacuation(walls) {
       return
     }
     setNotice(null)
+    // With both placed, the route starts where the person is, so that's the floor to look at.
+    if (placing === 'fire' && person) setFloor(person.floor)
     setPlacing(placing === 'fire' && !person ? 'person' : null)
   }, [placing, person, move])
 
-  const placeInRoom = useCallback((kind, roomId) => {
-    const room = map?.rooms[roomId]
+  const placeInRoom = useCallback((kind, roomFloor, roomId) => {
+    const roomMap = building?.maps[roomFloor]
+    const room = roomMap?.rooms[roomId]
     if (!room) return
-    setters[kind](room.center)
+    // The middle of a room can be under a table, so stand on the clear floor nearest to it.
+    setters[kind]({ ...(snapToFloor(roomMap, room.center, 3) ?? room.center), floor: roomFloor })
+    setFloor(kind === 'fire' && person ? person.floor : roomFloor)
     setNotice(null)
     dropBrief()
     setPlacing(current => (current === kind ? (kind === 'fire' && !person ? 'person' : kind === 'person' && !fire ? 'fire' : null) : current))
-  }, [map, setters, person, fire, dropBrief])
+  }, [building, setters, person, fire, dropBrief])
 
   const startPlacing = useCallback(kind => {
     setNotice(null)
@@ -98,12 +107,12 @@ export function useEvacuation(walls) {
     request.current = controller
     setBrief({ status: 'loading' })
     try {
-      const result = await requestEvacuationBrief({ map, plan, fire, person, imageUrl, signal: controller.signal })
+      const result = await requestEvacuationBrief({ building, plan, fire, person, imageUrl, signal: controller.signal })
       if (request.current === controller) setBrief({ status: 'ready', ...result })
     } catch (error) {
       if (request.current === controller && !controller.signal.aborted) setBrief({ status: 'error', message: error.message })
     }
-  }, [map, plan, fire, person])
+  }, [building, plan, fire, person])
 
-  return { active, open, close, leave, reset, clear, map, fire, person, fireField, plan, placing, notice, brief, move, place, placeInRoom, startPlacing, cancelPlacing, explain }
+  return { active, open, close, leave, reset, clear, building, floor, setFloor, map, fire, person, fireField, plan, placing, notice, brief, move, place, placeInRoom, startPlacing, cancelPlacing, explain }
 }

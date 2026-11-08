@@ -145,13 +145,15 @@ The AI explanation ran through the real frontend and backend route against a stu
 
 ## Multi-floor and the redesign
 
-`npm test` passes 65 frontend tests and `npm test` in `backend/` passes 15. Lint and the production build are clean. Headless Chrome checks at 1440 × 900 and 390 × 844, on both saved samples:
+`npm test` passes 86 frontend tests and `npm test` in `backend/` passes 17. Lint and the production build are clean. Headless Chrome checks at 1440 × 900 and 390 × 844, on both saved samples:
 
 - The landing page shows the two-floor house rising, then both samples open from it.
 - Floors stack, the roof sits on the top floor, and the floor picker isolates a floor and limits the slider to it.
 - See floor plan, Undo cut, side cuts, and drawing an area all work with the roof in place.
 - Clicking the floor starts a walk, Start in the middle works on both floors, W moves forward, and Esc returns to Explore.
-- Escape routes run on the ground floor and say that upper floors need stairs.
+- Walking from the foot of the sample house's flight climbs it, changes to Floor 2 at the middle, and carries on through a door upstairs. Tests also walk back down.
+- A route from Floor 2 runs down the flight to the outside door. A fire at the foot of the stairs sends someone upstairs to a window to signal instead.
+- Stairs cut correctly in plan view, a side cut through the flight runs without errors, the stairwell opening shows on Floor 2, and furniture appears at real size on both samples, follows cuts, and has an on-off switch.
 - There's no horizontal scroll on the narrow screen, and no text under 12 px.
 
 The touch-only wording and on-screen arrows weren't exercised with real touch input. The only console message is a `THREE.Clock` deprecation warning from the pinned three.js version.

@@ -6,12 +6,14 @@ import { buildEvacuationMap, computeFireField, HAZARD_RADIUS, pathLength, planEv
 const apartment = JSON.parse(readFileSync(new URL('../../sample_output/apartment_furnished_preview.walls.json', import.meta.url)))
 const map = buildEvacuationMap(apartment)
 // Places in the saved apartment, by what the original drawing labels them.
-const KITCHEN = { x: 9.4, z: 1.6 }
+const KITCHEN = { x: 8.4, z: 1.6 }
 const LIVING = { x: 2.5, z: 2 }
 const BEDROOM_1 = { x: 2.2, z: 6 }
-const BEDROOM_2 = { x: 9, z: 6 }
-const BATH = { x: 6.2, z: 6 }
-const OUTSIDE_DOOR = { x: 5.337, z: 0.108 }
+const BEDROOM_2 = { x: 8, z: 5 }
+const BATH = { x: 5.55, z: 6.4 }
+const OUTSIDE_DOOR = { x: 4.785, z: 0.11 }
+
+const WALL_X = apartment.find(element => element.type === 'wall' && element.rotation > 1 && element.z > 4 && element.x > 2 && element.x < 7).x
 
 /** Every point of a route must stand on walkable floor; no crossing walls or windows. */
 function assertWalkable(points) {
@@ -25,7 +27,7 @@ function assertWalkable(points) {
 test('the apartment reads as four rooms, one outside door, and six outside windows', () => {
   assert.equal(map.rooms.length, 4)
   assert.deepEqual(map.rooms.map(room => room.name), ['Room 1', 'Room 2', 'Room 3', 'Room 4'])
-  assert.ok(map.rooms[0].area > 30, 'the living and kitchen space is the largest room')
+  assert.ok(map.rooms[0].area > 25, 'the living and kitchen space is the largest room')
   assert.equal(map.doors.length, 4)
   assert.deepEqual(map.doors.filter(door => door.exterior).map(door => door.x), [OUTSIDE_DOOR.x])
   assert.equal(map.windows.length, 6)
@@ -56,7 +58,7 @@ test('the route ends clear of the building, not in the doorway', () => {
 })
 
 test('a fire at the only outside door sends the person out of a window', () => {
-  const plan = planEvacuation(map, { x: 5.3, z: 1 }, BEDROOM_1)
+  const plan = planEvacuation(map, { x: 4.8, z: 1 }, BEDROOM_1)
   assert.equal(plan.status, 'window')
   assert.equal(plan.route.exit, 'window')
   assert.deepEqual(plan.blockedExits.map(door => door.x), [OUTSIDE_DOOR.x])
@@ -66,7 +68,7 @@ test('a fire at the only outside door sends the person out of a window', () => {
 })
 
 test('a window wins over a door route that brushes past the fire, and the door becomes the backup', () => {
-  const plan = planEvacuation(map, map.rooms[0].center, BEDROOM_1)
+  const plan = planEvacuation(map, { x: 2, z: 2 }, BEDROOM_1)
   assert.equal(plan.status, 'window')
   assert.equal(plan.backup.exit, 'door')
   assert.ok(plan.doorTooClose < 2.5)
@@ -125,7 +127,7 @@ test('plans without typed doors still escape through gaps in the walls', () => {
 
 test('obstacles block the route but leave the rooms as they were', () => {
   // A wardrobe across the bedroom doorway, ready for the furniture work.
-  const blocked = buildEvacuationMap(apartment, { obstacles: [{ x: 3.744, z: 4.3, width: 1.6, depth: 0.6, rotation: 0 }] })
+  const blocked = buildEvacuationMap(apartment, { obstacles: [{ x: 3.325, z: 3.8, width: 1.6, depth: 0.6, rotation: 0 }] })
   assert.equal(blocked.rooms.length, 4)
   assert.equal(planEvacuation(map, KITCHEN, BEDROOM_1).status, 'route')
   assert.equal(planEvacuation(blocked, KITCHEN, BEDROOM_1).status, 'window')
@@ -139,8 +141,8 @@ test('elements on other floors are ignored', () => {
 })
 
 test('snapping pulls a point off a wall and rejects clicks far outside the building', () => {
-  const snapped = snapToFloor(map, { x: 4.842, z: 6 })
-  assert.ok(Math.abs(snapped.x - 4.842) > 0.15)
+  const snapped = snapToFloor(map, { x: WALL_X, z: 6 })
+  assert.ok(Math.abs(snapped.x - WALL_X) > 0.15)
   assert.equal(snapToFloor(map, { x: -3, z: -3 }), null)
   assert.equal(snapToFloor(map, { x: 40, z: 40 }), null)
 })

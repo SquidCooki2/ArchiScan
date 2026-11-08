@@ -3,10 +3,10 @@ import { useEffect, useLayoutEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { elementFloor, elementType, floorBase, floorCount, WALL_HEIGHT } from '../../lib/geometry'
-import { elementParts } from '../../lib/elementParts'
+import { elementParts, structuralElements } from '../../lib/elementParts'
 import { capPositions, cutPlane, partitionFootprint, prismPositions, sectionCap, wallFootprint } from '../../lib/sections'
 import { useReducedMotion } from '../../lib/useReducedMotion'
-import { CARD, CUT, CUT_TINT } from './colors'
+import { CARD, CUT, CUT_TINT, STRING } from './colors'
 
 function geometryFromPositions(positions) {
   const geometry = new THREE.BufferGeometry()
@@ -24,20 +24,25 @@ function Wall({ wall, index, bounds, section, area, materials, reducedMotion, op
   const parts = useMemo(() => elementParts(wall, { openDoors }), [wall, openDoors])
   const base = floorBase(elementFloor(wall))
   const region = section.scope === 'area' ? area : null
+  // One mesh per material rather than per prism: a flight of stairs alone is dozens of prisms.
   const pieces = useMemo(() => {
-    return parts.flatMap(part => {
+    const groups = new Map()
+    for (const part of parts) {
       const footprint = wallFootprint(part, bounds)
-      const pieces = region ? partitionFootprint(footprint, region) : [{ points: footprint, inside: false }]
-      const bottom = part.bottom + base, partTop = part.top + base
-      return pieces.map(piece => ({ ...piece, role: part.role, bottom, top: partTop,
-        geometry: geometryFromPositions(prismPositions(piece.points, partTop, bottom)) }))
-    })
+      for (const piece of region ? partitionFootprint(footprint, region) : [{ points: footprint, inside: false }]) {
+        const key = `${part.role}-${piece.inside}`
+        if (!groups.has(key)) groups.set(key, { role: part.role, inside: piece.inside, prisms: [] })
+        groups.get(key).prisms.push({ points: piece.points, bottom: part.bottom + base, top: part.top + base })
+      }
+    }
+    return [...groups.values()].map(group => ({ ...group,
+      geometry: geometryFromPositions(group.prisms.flatMap(({ points, top, bottom }) => prismPositions(points, top, bottom))) }))
   }, [parts, bounds, region, base])
   const affected = section.enabled && section.scope === 'all'
   const caps = useMemo(() => pieces.map(piece => {
     const clipped = affected || (section.enabled && section.scope === 'area' && piece.inside)
     if (!clipped) return null
-    const positions = capPositions(sectionCap(piece.points, bounds, section, piece.bottom, piece.top))
+    const positions = piece.prisms.flatMap(({ points, bottom, top }) => capPositions(sectionCap(points, bounds, section, bottom, top)))
     return positions.length ? geometryFromPositions(positions) : null
   }), [pieces, affected, bounds, section])
   useEffect(() => () => pieces.forEach(piece => piece.geometry.dispose()), [pieces])
@@ -78,6 +83,7 @@ export default function Walls({ walls, bounds, section, area, openDoors = false,
   const materials = useMemo(() => {
     const palettes = {
       wall: { color: CARD, roughness: 0.85, metalness: 0 },
+      string: { color: STRING, roughness: 0.8, metalness: 0 },
       frame: { color: '#5b626b', roughness: 0.45, metalness: 0.2 },
       glass: { color: '#93c5fd', roughness: 0.1, metalness: 0.1, transparent: true, opacity: 0.35, depthWrite: false },
       door: { color: '#a47c58', roughness: 0.7, metalness: 0 },
@@ -107,8 +113,9 @@ export default function Walls({ walls, bounds, section, area, openDoors = false,
   }, [plane, bounds, section])
   useEffect(() => () => Object.entries(materials).forEach(([key, palette]) => { if (key === 'cap') palette.dispose(); else Object.values(palette).forEach(material => material.dispose()) }), [materials])
   const top = floorCount(walls) * WALL_HEIGHT
+  const elements = useMemo(() => structuralElements(walls), [walls])
   return <group>
-    {walls.map((wall, index) => <Wall key={index} wall={wall} index={index} bounds={bounds} section={section} area={area}
+    {elements.map((wall, index) => <Wall key={index} wall={wall} index={index} bounds={bounds} section={section} area={area}
       materials={materials} reducedMotion={reducedMotion} openDoors={openDoors} top={top} visible={visibleFloor === 'all' || elementFloor(wall) <= visibleFloor} />)}
   </group>
 }

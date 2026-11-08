@@ -2,7 +2,7 @@
 import { useEffect, useLayoutEffect, useRef } from 'react'
 import { useFrame, useThree } from '@react-three/fiber'
 import * as THREE from 'three'
-import { EYE_HEIGHT, humanFov, moveWithCollision, placementAt, walkingVector } from '../../lib/walkthrough'
+import { EYE_HEIGHT, humanFov, placementAt, walkHeight, walkingVector, walkStep } from '../../lib/walkthrough'
 
 const keyDirection = { KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', ArrowDown: 'backward', KeyA: 'left', ArrowLeft: 'left', KeyD: 'right', ArrowRight: 'right' }
 
@@ -30,7 +30,7 @@ function restore(get, snapshot) {
 }
 
 /** First-person view: keys or on-screen arrows to walk, drag to look. Mounted only while walking. */
-export default function HumanCamera({ spawn, world, movement, reducedMotion, onExit, onTransition }) {
+export default function HumanCamera({ spawn, building, movement, reducedMotion, onExit, onTransition, onFloor }) {
   const get = useThree(state => state.get)
   const size = useThree(state => state.size)
   const overview = useRef(null)
@@ -39,6 +39,7 @@ export default function HumanCamera({ spawn, world, movement, reducedMotion, onE
   const velocity = useRef({ x: 0, z: 0 })
   const transition = useRef(0)
   const look = useRef(new THREE.Euler(0, 0, 0, 'YXZ'))
+  const floor = useRef(0)
 
   useLayoutEffect(() => {
     const { camera, controls } = get()
@@ -54,7 +55,9 @@ export default function HumanCamera({ spawn, world, movement, reducedMotion, onE
     pressed.current.clear()
     velocity.current = { x: 0, z: 0 }
     movement.current = {}
+    const world = building.floors[spawn.floor]
     if (!placementAt(spawn, world).valid) { onExit(); return }
+    floor.current = spawn.floor
     const { camera } = get()
     camera.clearViewOffset()
     camera.zoom = 1
@@ -71,7 +74,7 @@ export default function HumanCamera({ spawn, world, movement, reducedMotion, onE
     onTransition(!reducedMotion)
     // Resize updates projection separately, without resetting the person's location.
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [spawn, world, get, movement, reducedMotion, onExit, onTransition])
+  }, [spawn, building, get, movement, reducedMotion, onExit, onTransition])
 
   useEffect(() => {
     const { camera } = get()
@@ -145,8 +148,11 @@ export default function HumanCamera({ spawn, world, movement, reducedMotion, onE
     const dt = Math.min(delta, 0.25), acceleration = 1 - Math.exp(-12 * dt)
     velocity.current.x += (vector.x - velocity.current.x) * acceleration
     velocity.current.z += (vector.z - velocity.current.z) * acceleration
-    const next = moveWithCollision(camera.position, { x: velocity.current.x * dt, z: velocity.current.z * dt }, world)
-    camera.position.set(next.x, world.floorY + EYE_HEIGHT, next.z)
+    const next = walkStep({ x: camera.position.x, z: camera.position.z, floor: floor.current }, { x: velocity.current.x * dt, z: velocity.current.z * dt }, building)
+    if (next.floor !== floor.current) { floor.current = next.floor; onFloor(next.floor) }
+    // Eye height eases toward the step underfoot, so climbing feels like walking, not an elevator.
+    const eye = walkHeight(next, building) + EYE_HEIGHT
+    camera.position.set(next.x, camera.position.y + (eye - camera.position.y) * (1 - Math.exp(-12 * dt)), next.z)
     camera.quaternion.setFromEuler(look.current.set(pitch.current, yaw.current, 0, 'YXZ'))
   })
   return null
