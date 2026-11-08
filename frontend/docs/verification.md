@@ -3,8 +3,8 @@
 ## Automated checks
 
 - `npm run lint`: passed without warnings.
-- `npm test`: all 29 geometry tests passed, including typed openings, direct-selection movement, resizing, and local cut-range tests.
-- `npm run build`: passed. Vite reports a large lazy-loaded viewer chunk (~1,005 kB minified / 276 kB gzip), which includes the 3D engine. Further bundle optimization is optional.
+- `npm test`: all 43 geometry/navigation tests passed, including typed openings, section manipulation, collision constraints, walking vectors, and doorway traversal.
+- `npm run build`: passed. Vite reports a large lazy-loaded viewer chunk (~1,013 kB minified / 278 kB gzip), which includes the 3D engine. Further bundle optimization is optional.
 - `git diff --check`: passed.
 
 ## Browser checks
@@ -111,3 +111,23 @@ Nine new unit tests bring the suite to 29 passing tests. Eight focused browser c
 8. Invalid opening dimensions display an error and preserve the prior model.
 
 The direct-selection suite also passed with the updated geometry on desktop and mobile touch. No application console warnings or runtime errors were observed. Glazing uses the lightweight transparent standard material specified in the frontend plan. Doors are closed by default because no swing/hinge state is supplied. See `architectural-elements.md` for geometry and validation details. The backend schema and sample artifact were not modified.
+
+## Human Perspective Mode
+
+Fourteen new unit tests cover human dimensions/FOV, rotated-wall and corner collisions, matching rendered/collidable door swings, short/narrow openings, actual glazing, normalized walking speed, tunneling prevention, wall sliding, inferred floor bounds, undersized floors, rotated doors, and all internal door passages in the backend sample. The unit suite now totals 43 passing tests.
+
+All 55 existing browser regression checks passed again. Eleven new walkthrough checks also passed (66 total):
+
+1. Floor-level human previews reject solid intersections, and entering placement suspends cuts without resetting the model.
+2. Human view uses a 1.65 m eye height, centered moderate perspective, inferred floor/ceiling, and visible unverified-scale labeling.
+3. WASD and arrow movement uses model meters and stops at solid interior walls, including under slow software rendering.
+4. Backward movement and mouse drag-to-look work without pointer lock.
+5. Exit restores overview position, orientation, orbit target, and exact prior section settings.
+6. Native avatar drag-and-drop enters at the chosen floor location.
+7. Movement traverses an actual dynamically reconstructed, visibly opened doorway.
+8. Repositioning returns to the saved overview and can be cancelled.
+9. Optional pointer lock allows mouse look; Escape releases it and returns to overview.
+10. Mobile touch supports avatar dragging, view rotation, on-screen walking buttons, and exit without horizontal overflow.
+11. Normal-motion fade entry and viewport resizing preserve eye height and return correctly to overview.
+
+No application console warnings or runtime errors were observed. Placement, first-person interior, and mobile screenshots were reviewed. Walking retains meter-scale timing on longer frames using collision substeps, and static walkthrough shadows are cached. The implementation adds no runtime dependency and does not change the backend schema. Scale remains explicitly unverified; flat floor/ceiling coverage and 2.7 m wall height are inferred assumptions. See `human-perspective.md`.

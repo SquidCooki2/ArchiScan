@@ -12,3 +12,11 @@
 See `verification.md` for checks and limitations. The requested section-view extension adds X/Z cuts, direction reversal, selected walls, and precise rectangular area cuts; see `section-view.md`.
 
 The updated backend sample's typed walls/windows/doors are supported, including actual window apertures, framed glass, door leaves and handles, and section caps respecting each part's vertical span. See `architectural-elements.md`.
+
+- [x] Human Perspective: floor-validated avatar placement via drag/drop, click/confirm, and touch.
+- [x] Meter-scale first-person camera, WASD/arrows, mouse capture/drag look, and touch navigation.
+- [x] Dynamic wall/glass/door collisions, doorway clearance, wall sliding, and inferred floor limits.
+- [x] Overview/section preservation, contextual open doors, scale-assumption labeling, and normal/reduced-motion entry.
+- [x] Walkthrough verification: 14 navigation unit tests and 11 browser interaction checks; all prior regression suites pass.
+
+See `human-perspective.md` for physical assumptions and implementation details.
