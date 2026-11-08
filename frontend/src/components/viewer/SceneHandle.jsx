@@ -1,9 +1,10 @@
 import { useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
+import { CUT } from './colors'
 
 /** Keep handles comfortably sized in pixels while the user orbits or zooms. */
-export default function SceneHandle({ position, color = '#a5b4fc', name, ...events }) {
+export default function SceneHandle({ position, color = CUT, name, ...events }) {
   const mesh = useRef()
   const [x, y, z] = position
   const target = useMemo(() => new THREE.Vector3(x, y, z), [x, y, z])

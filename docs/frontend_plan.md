@@ -3,7 +3,7 @@
 ## 1. Goal & Aesthetic
 The primary goal of the frontend is to deliver a highly polished, sleek, and impressive presentation. The UI must feel modern and minimal, allowing the 3D model to be the focal point. Transitions should be smooth, and user interactions (like uploading and slicing the model) must provide immediate visual feedback.
 
-*   **Look:** dark, near-black background (`bg-neutral-950`) with a subtle radial gradient; glass panels (`bg-white/5 backdrop-blur-xl border border-white/10 rounded-2xl`); one accent colour (e.g. `indigo-400`); light type (`font-light`, `tracking-tight`).
+*   **Look:** a white card architect's model on a dark drafting table (`#171c22`), with solid panels (`#20262e`). Drafting blue (`#7cb7ff`) marks cuts and selection only; green and orange appear only in escape mode. One typeface, Archivo. See `frontend/src/components/ui.jsx`.
 *   **Motion:** `transition-all duration-300 ease-out` on interactive elements; fade/scale-in for panels.
 
 ## 2. Tech Stack
@@ -24,15 +24,17 @@ The primary goal of the frontend is to deliver a highly polished, sleek, and imp
 src/
 ├── main.jsx
 ├── index.css                 # only @import "tailwindcss";
-├── App.jsx                   # owns app state; composes Header, UploadZone, Viewer, SectionControls
+├── App.jsx                   # owns app state; composes Header, Landing, Viewer, and the mode panels
 ├── api/
 │   └── parseBlueprint.js     # fileToBase64 + POST to backend, returns walls[]
 ├── components/
 │   ├── Header.jsx
-│   ├── UploadZone.jsx        # drag-and-drop + click-to-browse
+│   ├── Landing.jsx           # first screen: upload and samples, with drop anywhere
 │   ├── LoadingOverlay.jsx
 │   ├── ErrorToast.jsx
-│   ├── SectionControls.jsx   # floating glass panel with slider + toggle + reset
+│   ├── ExplorePanel.jsx      # floors, roof, cut slider, more options
+│   ├── WalkPanel.jsx         # choosing a spot, then walking controls
+│   ├── EvacuationPanel.jsx   # fire, person, and route
 │   └── viewer/
 │       ├── Viewer.jsx        # <Canvas>, lights, camera, controls, environment
 │       ├── Walls.jsx         # maps walls[] -> meshes, centered group
@@ -51,10 +53,10 @@ src/
 State: `status` (`'idle' | 'loading' | 'ready' | 'error'`), `walls` (array), `error` (string|null), `previewUrl` (object URL of the uploaded image), `clipEnabled` (bool), `clipHeight` (number, meters).
 
 Flow:
-1. `idle`: full-screen centered `UploadZone`; the canvas shows an empty grid behind it (blurred) so the transition feels continuous.
+1. `idle`: `Landing` beside a live 3D sample model that rises and slowly turns, showing what the product does.
 2. User drops/selects a file. Validate on the client: type is `image/png|jpeg|webp|gif`, size ≤ 5 MB. Otherwise show an `ErrorToast` and stay `idle`.
 3. `loading`: show `LoadingOverlay` (spinner + rotating status text like "Reading floorplan…", and the image thumbnail). Call the API.
-4. `ready`: UploadZone collapses to a small "New upload" button in the header; the model animates in (walls scale up on Y from 0 over ~600 ms, staggered); `SectionControls` appears.
+4. `ready`: Landing gives way to the mode switch and a "New plan" button in the header; the model animates in (walls scale up on Y from 0 over ~600 ms, staggered); `SectionControls` appears.
 5. `error`: toast with the backend's `error.message`; return to `idle`, keeping the previous model if one exists.
 
 ## 6. API Layer (`api/parseBlueprint.js`)
@@ -109,16 +111,37 @@ A `<mesh rotation-x={-Math.PI / 2}>` plane at `y = 0` slightly larger than the b
 ## 9. Section View (clipping plane)
 *   Compute `totalHeight = (maxFloor + 1) * WALL_HEIGHT` (where `maxFloor = Math.max(0, ...walls.map(w => w.floor ?? 0))`).
 *   Create one plane: `const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, -1, 0), clipHeight), [])` and update `plane.constant = clipHeight` in `useEffect`/`useFrame` when state changes. A normal of `(0, -1, 0)` keeps everything **below** `y = clipHeight`; the plane is `-y + constant >= 0` so `constant = clipHeight` cuts at that height.
-*   Slider: `<input type="range" min={0.1} max={totalHeight} step={0.01}>` in `SectionControls`, default value `totalHeight` (no cut). Show the current height as `1.35 m` text (and optionally quick-jump floor buttons when `maxFloor > 0`). A "Section view" toggle sets `clipEnabled`; when disabled, pass `clippingPlanes={[]}`.
-*   Style the slider via Tailwind (`accent-indigo-400 w-full`), in a floating glass panel `fixed bottom-6 left-1/2 -translate-x-1/2 w-80`.
+*   Slider: `<input type="range" min={0.1} max={totalHeight} step={0.01}>` in `ExplorePanel`, default value `totalHeight` (no cut). Show the current height as `1.35 m` text (and optionally quick-jump floor buttons when `maxFloor > 0`). A "Section view" toggle sets `clipEnabled`; when disabled, pass `clippingPlanes={[]}`.
+*   The slider lives in `ExplorePanel`, with `accent` set to drafting blue.
 *   Clipped walls appear hollow when cut. Provide a cap: render each wall also with a `BackSide` material in a flat accent colour (`side: THREE.BackSide`, same clipping plane) so the cut interior reads as a solid fill. Do this once the basics work (stretch goal).
 *   Optional stretch: a second slider or buttons to cut along X or Z axes.
 
+## 9a. Roofs (frontend only; no API change)
+*   The user picks **Flat**, **Gable**, or **Hip** in the controls panel (`RoofPicker.jsx`); the default is `DEFAULT_ROOF = 'gable'` in `lib/roof.js`.
+*   `computeRoofPlan(elements)` (in `lib/roof.js`) derives roof pieces from every element (walls, windows, doors):
+    1. Find the dominant wall direction so rotated plans still work.
+    2. Rasterize the elements at 0.1 m, close gaps up to ~1.2 m (doorways), flood-fill from outside to get the footprint.
+    3. Cover the footprint with up to 12 overlapping rectangles, largest first. Same-pitch roofs on overlapping rectangles meet in natural valleys (L-shaped houses).
+    4. If the outline isn't closed, fall back to one roof over the plan's bounds.
+*   `buildRoofGeometry(type, rect)` builds one closed solid per piece: 30° pitch, 0.3 m overhang, flat slabs 0.3 m thick. Gable ends use the wall material.
+*   `Roof.jsx` renders the pieces in the walls' centered group, sitting on `WALL_HEIGHT`, using the shared clipping plane plus a blueprint back-face cap. It drops in after the walls finish rising.
+*   The section slider's maximum is the top of the roof (`roofTopHeight(plan, type)`), so the cut can slice through the roof; the 1.2 m plan cut removes it entirely.
+
+## 9b. Escape Route Mode
+A mode beside Explore that answers "there's a fire here and I'm there, how do I get out?" with arrows on the floor.
+*   **Route (`lib/evacuation.js`, no AI, no network):** Dijkstra over a 0.1 m floor grid built from the elements. Walls and windows block; doors and gaps are open; openings narrower than 0.36 m aren't walkable. Fire spreads by walking distance, so walls shelter what's behind them. The route never comes within 1.5 m of the fire by walking distance and prefers to stay 6 m away.
+*   **Exits:** leaving the building footprint (the same footprint the roof uses), so plans without typed doors still work. A window takes over when the doors are cut off, or when the door route passes closer than 2.5 m and the window doesn't. With neither, the plan is to stay put and signal.
+*   **Rooms:** connected floor regions with doors as barriers, numbered largest first until the AI explanation reads their names from the drawing.
+*   **Scene (`viewer/EvacuationScene.jsx`):** forces a plan cut at 1.2 m without touching the user's section state, opens the doors, and tilts the camera up. Chevrons sit on the floor and a pulse of light runs toward the exit (steady under reduced motion). Dim chevrons show the backup way out.
+*   **Input:** click the floor, drag the markers, or choose a room from a list for keyboard use. Esc cancels placing.
+*   **AI (`POST /api/evacuation-brief`):** Claude writes the finished route in plain words and reads room names from the drawing. It receives the route's facts and never changes them; the route stands without it, and the button is hidden in mock mode.
+*   **Limits:** ground floor only (`floor: 0`), because the contract has no stairs. `buildEvacuationMap(elements, { obstacles })` takes furniture rectangles when those land.
+
 ## 10. UI Components
-*   **Header:** fixed top bar, app name "ArchiScan", glass style, "New upload" button when `status === 'ready'`.
-*   **UploadZone:** dashed border `border-white/20`, `hover:border-indigo-400/60 hover:bg-white/10`, highlights on `dragover`. Hidden `<input type="file" accept="image/*">`; the whole zone is clickable and keyboard accessible (`role="button"`, `tabIndex={0}`, Enter/Space opens the dialog).
-*   **LoadingOverlay:** `fixed inset-0 backdrop-blur-md bg-black/40`, spinner via Tailwind `animate-spin`.
-*   **ErrorToast:** top-right, red-tinted glass, auto-dismiss after 6 s, with a close button.
+*   **Header:** the wordmark, the mode switch once a model is loaded, and "New plan". It's hidden while walking so the view stays clear.
+*   **Landing:** one primary upload button, with a full-window overlay while a file is dragged over the page. The hidden `<input type="file" multiple>` takes up to 5 images, one per floor, sorted by file name.
+*   **LoadingOverlay:** shows the uploaded plan with a scan line, and says how many floors are being read.
+*   **ErrorToast:** says what went wrong and how to fix it, auto-dismisses after 6 s, and has a close button.
 *   Responsive: works at 1280 px and above; the controls panel should remain usable on narrow screens (`max-w-[90vw]`).
 
 ## 11. Verification
