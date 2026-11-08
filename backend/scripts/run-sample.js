@@ -20,7 +20,7 @@ function parseCliArgs(argv) {
     args.splice(outIdx, 2);
   }
   if (args.length === 0) {
-    const defaultImg = path.join(__dirname, '../assets/apartment_furnished_preview.png');
+    const defaultImg = path.join(__dirname, '../assets/house0/apartment_furnished_preview.png');
     return { imagePaths: [defaultImg], name: outName || path.basename(defaultImg, path.extname(defaultImg)) };
   }
   // Backwards-compatible: if 2 args and the 2nd does not look like a file with extension, treat 2nd as outputName

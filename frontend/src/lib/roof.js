@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { elementFloor, floorBase, floorCount, WALL_HEIGHT } from './geometry.js'
+import { elementFloor, floorBase, floorCount, WALL_HEIGHT, isEnclosure } from './geometry.js'
 
 /**
  * Roofs are generated entirely on the frontend from the wall data (no API change).
@@ -271,7 +271,7 @@ export function computeRoofPlan(allElements) {
   if (!allElements?.length) return { rects: [], base: WALL_HEIGHT }
   // The roof covers the top floor and sits on its walls.
   const topFloor = floorCount(allElements) - 1
-  const elements = allElements.filter((element) => elementFloor(element) === topFloor)
+  const elements = allElements.filter((element) => isEnclosure(element) && elementFloor(element) === topFloor)
   const base = floorBase(topFloor) + WALL_HEIGHT
   const angle = dominantAngle(elements)
   const items = toFrame(elements, angle)

@@ -68,11 +68,16 @@ Flow:
 *   While the backend is not built, `?mock=1` in the URL (or a missing `VITE_API_URL`) loads `samples/sampleWalls.json` after a 1.5 s artificial delay.
 
 ## 7. Data Contract & Coordinates (must match `docs/backend_plan.md` section 6)
-Each element in the array has `{ type, floor, x, z, width, depth, rotation, sillHeight?, height? }` in **meters**:
-*   `type`: `"wall" | "window" | "door"` (treat missing `type` as `"wall"`).
+Each element in the array is either a **sized structural element** (`{ type, floor, x, z, width, depth, rotation, sillHeight?, height? }` for `wall`, `window`, `door`, `stairs`) or a **furniture element** (`{ type, floor, x, z, rotation }`) in **meters**:
+*   `type`:
+    *   Structural: `"wall" | "window" | "door" | "stairs"` (treat missing `type` as `"wall"`).
+    *   Furniture: `"couch" | "chair" | "fridge" | "sink" | "bed" | "wardrobe" | "cabinet" | "toilet" | "table" | "bath"`.
 *   `floor`: non-negative integer (`0` = ground floor, `1` = second floor, etc.; treat missing `floor` as `0` for backwards compatibility).
-*   `(x, z)` is the element's **center**; `width` is length along local X; `depth` is thickness along local Z; `rotation` is radians around Y. Origin is the top-left of the plan, +X right, +Z down the image.
-*   `sillHeight` and `height`: vertical placement and height in meters for `"window"` (default `0.9` and `1.2`) and `"door"` (default `0` and `2.1`). Full wall height per floor is `WALL_HEIGHT = 2.7`. 
+*   `(x, z)` is the element's **center**; origin is the top-left of the plan, +X right, +Z down the image.
+*   For `"wall"`, `"window"`, and `"door"`, `width` is length along local X; `depth` is thickness along local Z; `rotation` is radians around Y in `[0, π)`. `sillHeight` and `height` give vertical placement and height for `"window"` (default `0.9` and `1.2`) and `"door"` (default `0` and `2.1`). Full wall height per floor is `WALL_HEIGHT = 2.7`.
+*   For `"stairs"`, `width` is the stair run length, `depth` is the tread width, and `rotation` is in `[0, 2π)` indicating the ascending (`UP`) direction (`0` = ascends `+Z`, `π/2` = ascends `+X`, `π` = ascends `-Z`, `3π/2` = ascends `-X`). Stairs climb from `floor * WALL_HEIGHT` to `(floor + 1) * WALL_HEIGHT`, and the upper floor slab at `floor + 1` can cut a stairwell opening over the `(x, z, width, depth, rotation)` rectangle.
+*   For furniture elements, `width` and `depth` are omitted (the frontend places fixed-size 3D models at `[item.x, (item.floor ?? 0) * WALL_HEIGHT, item.z]`), and `rotation` is in `[0, 2π)` indicating facing direction (`0` = faces `+Z`, `π/2` = faces `+X`, `π` = faces `-Z`, `3π/2` = faces `-X`).
+*   When computing model bounds in `computeBounds(elements)`, use `(w.width ?? 0) / 2` so furniture items without `width`/`depth` never produce `NaN`.
 
 ## 8. 3D Viewer
 ### Canvas & camera
@@ -105,6 +110,30 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
 *   If the payload contains upper floors (`maxFloor > 0`), render a thin translucent floor slab at `y = f * WALL_HEIGHT` for each upper floor `f = 1..maxFloor` sized to that floor's bounds, clipped by the same section plane.
 *   Use `key={index}`.
 
+### Procedural Stairs (`lib/elementParts.js` / `Walls.jsx` & `FloorSlabs.jsx`)
+*   **Stairs are generated procedurally by the frontend** (there is no static stair `.gltf` model).
+*   For each element with `type === 'stairs'` (`{ type: 'stairs', floor, x, z, width, depth, rotation }`):
+    *   `width` is the horizontal run length along the direction of ascent; `depth` is the tread width perpendicular to travel; `rotation` in `[0, 2π)` is the ascending (`UP`) direction (`0` = `+Z`, `π/2` = `+X`, `π` = `-Z`, `3π/2` = `-X`).
+    *   Generate `N = Math.max(8, Math.round(WALL_HEIGHT / 0.18))` steps (15 for a 2.7 m story) climbing from `y = floor * WALL_HEIGHT` to `y = (floor + 1) * WALL_HEIGHT`. Each step `i` (`0..N-1`) is a solid prism of tread length `width / N` and height `(i + 1) * (WALL_HEIGHT / N)`, from `-width / 2` to `+width / 2` along the ascending axis. Prisms merge into one mesh per material, so a flight costs a few draw calls.
+    *   Strings and glass guards run up both sides, leaving the lowest 0.7 m of the flight open so one that lands against a wall can still be stepped off. A glass guard surrounds the stairwell upstairs, open at the head of the flight (`structuralElements`).
+    *   **Upper floor slab cutout:** `FloorSlabs.jsx` builds each slab as an extruded shape with one hole per flight arriving from below, held inside the slab's edge (`stairwellCorners`).
+    *   **Walking (`lib/walkthrough.js`):** `buildWalkBuilding` makes one collision world per floor. `walkStep` moves between them past the middle of a flight, and `walkHeight` gives the height of the step underfoot, which the camera eases toward. Colliders make the flight a corridor, closed at the end you can't leave by on that floor. A flight with no floor above it is solid.
+
+### Furniture Models & Sizing Caveat (`public/assets/furniture/`)
+*   Static 3D furniture assets (KayKit Furniture Bits `.gltf` + `.bin` + `furniturebits_texture.png`) live in `frontend/public/assets/furniture/` and are loaded via Drei's `useGLTF('/assets/furniture/<name>.gltf')`:
+    *   `"couch"` → `couch.gltf` (or `couch_pillows.gltf`), native bounding box `[3.0, 1.22, 1.6]`
+    *   `"chair"` → `chair_A.gltf` (or `chair_A_wood.gltf`, `chair_B.gltf`, `armchair.gltf`), native bounding box `[0.75, 1.26, 0.85]`
+    *   `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf`, native bounding box `[3.1, 1.0, 3.0]` (double)
+    *   `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf`, native bounding box `[2.0, 1.0, 1.0]`
+    *   `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall. `shelf_A_big.gltf` is really a wall shelf of `[2.0, 0.4, 0.5]`, so it isn't used.
+    *   `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf`, native bounding box `[2.0, 1.0, 2.0]`
+    *   **Fixtures not in the KayKit pack (`"fridge"`, `"sink"`, `"toilet"`, `"bath"`):** Render clean procedural Three.js box/cylinder groups (or fallback cabinet/shelf GLTFs) styled to match the architectural model.
+*   **IMPORTANT — Model Sizing / Scale Normalization:**
+    *   The raw `.gltf` assets in `public/assets/furniture/` are authored in stylized game units roughly **1.4× to 1.6× larger than real-world meters** (e.g., `bed_double_A.gltf` is `3.1 × 3.0` units and `couch.gltf` is `3.0 × 1.6` units, whereas floorplan walls use true meters with `WALL_HEIGHT = 2.7` m).
+    *   Rendering the GLTFs at `scale={1}` would make furniture look oversized and clip into adjacent walls or doorways. `lib/furniture.js` lists a real-world box in meters per type, and `viewer/Furniture.jsx` fits each model's geometry to it: recentered in plan, standing on `y = 0`, scaled per axis.
+*   **Rendering (`viewer/Furniture.jsx`, `viewer/fixtureGeometry.js`):** one `instancedMesh` per type. Fixtures are merged boxes and cylinders built to their boxes. Boxes at the final size stand in while models load, and stay if they can't load. All furniture shares one basswood tone (`#c8b89f`, fixtures `#cfd4d8`) in place of the pack's texture, so it reads as part of the white card model and procedural fixtures match. Materials use the same clipping planes as the slabs, so every cut applies. Model front is `+Z`; `rotation.y = item.rotation`.
+*   **Explore** has a Furniture switch. Walking and escape routes always show furniture, since it's in the way.
+
 ### Floor (`Floor.jsx`)
 A `<mesh rotation-x={-Math.PI / 2}>` plane at `y = 0` slightly larger than the bounds (`size + 4`), dark material that receives shadows, plus Drei `<Grid infiniteGrid fadeDistance={40} cellColor="#333" sectionColor="#555" />`.
 
@@ -135,7 +164,10 @@ A mode beside Explore that answers "there's a fire here and I'm there, how do I 
 *   **Scene (`viewer/EvacuationScene.jsx`):** forces a plan cut at 1.2 m without touching the user's section state, opens the doors, and tilts the camera up. Chevrons sit on the floor and a pulse of light runs toward the exit (steady under reduced motion). Dim chevrons show the backup way out.
 *   **Input:** click the floor, drag the markers, or choose a room from a list for keyboard use. Esc cancels placing.
 *   **AI (`POST /api/evacuation-brief`):** Claude writes the finished route in plain words and reads room names from the drawing. It receives the route's facts and never changes them; the route stands without it, and the button is hidden in mock mode.
-*   **Limits:** ground floor only (`floor: 0`), because the contract has no stairs. `buildEvacuationMap(elements, { obstacles })` takes furniture rectangles when those land.
+*   **Furniture:** fixed pieces block routes; chairs don't, since people push them aside. A window behind a desk still counts, standing beside the desk in the same room. If furniture is all that stands in the way, the route goes past it and the panel says so.
+*   **Floors and stairs:** `buildEvacuationBuilding` makes one map per floor, numbers rooms across the building, and finds a landing at each end of each flight, which is an obstacle on both floors it touches. `computeFireFields` carries the fire's walking distance between floors only through the stairs. `planEscape` returns one route in 3D, with `y` and `floor` on each point, and `stepGroups` for the steps per floor.
+*   **Routes only go down.** Climbing away from a fire leaves someone further from the way out with it between them. Upstairs, if every flight down is within 1.5 m of the fire on the way, the plan is `signal`: go to a window on this floor and call for help. Otherwise that window is the backup.
+*   **Limits:** floors are viewed one at a time. Stairs are straight flights between two adjacent floors, as the contract gives them.
 
 ## 10. UI Components
 *   **Header:** the wordmark, the mode switch once a model is loaded, and "New plan". It's hidden while walking so the view stays clear.

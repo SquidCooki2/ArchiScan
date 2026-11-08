@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { ROOF_TYPES } from '../lib/roof'
 import Icon from './Icon'
 import { floorOptions } from '../lib/floorOptions'
-import { Button, focusRing, Panel, Segmented } from './ui'
+import { Button, focusRing, Panel, Segmented, Switch } from './ui'
 
 const ROOFS = ROOF_TYPES.map(({ id, label }) => ({ id, label, icon: `${id}Roof` }))
 const DIRECTIONS = [
@@ -56,7 +56,7 @@ function MoreOptions({ cut }) {
   </details>
 }
 
-export default function ExplorePanel({ floors, floor, onFloor, roofType, onRoof, cut, onResetView }) {
+export default function ExplorePanel({ floors, floor, onFloor, roofType, onRoof, cut, onResetView, hasFurniture, showFurniture, onShowFurniture }) {
   return <Panel label="Explore the model">
     {floors > 1 && <Segmented legend="Floors" name="floors" options={floorOptions(floors, { all: true })} value={floor} onChange={onFloor} />}
     {floor === 'all' && <Segmented legend="Roof" name="roof-style" options={ROOFS} value={roofType} onChange={onRoof} />}
@@ -67,6 +67,7 @@ export default function ExplorePanel({ floors, floor, onFloor, roofType, onRoof,
         <Button variant="quiet" disabled={!cut.cutting && !cut.area} onClick={cut.reset}><Icon name="reset" className="size-3.5" />Undo cut</Button>
       </div>
     </div>
+    {hasFurniture && <Switch label="Furniture" checked={showFurniture} onChange={onShowFurniture} />}
     <MoreOptions key={floor} cut={cut} />
     <Button variant="quiet" className="-mt-2 w-full" onClick={onResetView}>Reset camera</Button>
   </Panel>
