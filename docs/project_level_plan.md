@@ -86,6 +86,30 @@ Detailed plans: [frontend_plan.md](frontend_plan.md) and [backend_plan.md](backe
 
 **Limits:** images up to 5 MB (png/jpeg/webp/gif); request body up to 50 MB; frontend timeout 150 s.
 
+## 5a. Evacuation Brief Contract
+Optional AI explanation of an escape route. The frontend computes the route; this endpoint only writes about it. Routes cover the ground floor (`floor: 0`) because the contract has no stairs.
+
+**Request:** `POST {VITE_API_URL}/api/evacuation-brief`
+```json
+{
+  "facts": {
+    "outcome": "route | window | shelter",
+    "rooms": [{ "id": 0, "name": "Room 1", "areaSquareMeters": 34.5, "acrossPlan": 0.51, "downPlan": 0.22 }],
+    "fire": { "roomId": 0, "acrossPlan": 0.83, "downPlan": 0.12 },
+    "person": { "roomId": 1, "nextToFire": false, "acrossPlan": 0.19, "downPlan": 0.68 },
+    "route": { "meters": 7.0, "exit": "door | opening | window", "closestMetersToFire": 4.13, "passesThroughFireRoom": true },
+    "outsideDoorsCutOff": 0,
+    "backupWindowMeters": 2.33,
+    "steps": ["Walk 2.4 m to the door. Go through it and close it behind you."]
+  },
+  "image": "<optional raw base64 of the floorplan>",
+  "mediaType": "image/png"
+}
+```
+**Success (200):** `{ "brief": "Leave by the door...", "roomNames": [{ "id": 0, "name": "Living / Kitchen" }] }`
+
+**Error:** same format as section 5. `route` is `null` when `outcome` is `shelter`.
+
 ## 6. Local Development
 | Item | Value |
 |---|---|

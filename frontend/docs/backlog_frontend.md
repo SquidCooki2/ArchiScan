@@ -8,15 +8,13 @@
 - [x] Task 5: Horizontal clipping, toggle, slider, meters readout, reset and fit controls.
 - [x] Task 6: Toasts, loading preview, transitions, horizontal wall caps, narrow-screen checks.
 - [ ] Task 7: Real-backend end-to-end test with actual floorplans. Backend API arrived in the merge; live Claude integration still needs verification.
+- [x] Task 8: Roofs. Flat, gable, and hip, chosen with a picker (default gable), generated from the walls. Section cuts reach the ridge and follow every cut target. See `docs/frontend_plan.md` section 9a.
+- [x] Task 9: Windows and doors render per `docs/frontend_plan.md` section 8: sill, glass or door panel, and lintel, with caps on each part.
+- [x] Task 10: Escape route mode. Fire and person placement, floor arrows, backup route, written steps. See `docs/frontend_plan.md` section 9b.
+- [ ] Task 11: Check the AI explanation against the live Claude API. It's only tested against a stubbed model so far.
 
-See `verification.md` for checks and limitations. The requested section-view extension adds X/Z cuts, direction reversal, selected walls, and precise rectangular area cuts; see `section-view.md`.
+- [x] Task 12: Merge main. Render multi-floor models: stacked walls, floor slabs, roof on the top floor, floor picker, one image per floor on upload.
+- [x] Task 13: Clarity pass. One mode switch (Explore, Walk, Escape route), one panel per mode, simplified cuts and walk start, new visual design.
+- [ ] Task 14: Stairs. Connecting floors for walking and escape routes needs stairs in the shared contract.
 
-The updated backend sample's typed walls/windows/doors are supported, including actual window apertures, framed glass, door leaves and handles, and section caps respecting each part's vertical span. See `architectural-elements.md`.
-
-- [x] Human Perspective: floor-validated avatar placement via drag/drop, click/confirm, and touch.
-- [x] Meter-scale first-person camera, WASD/arrows, mouse capture/drag look, and touch navigation.
-- [x] Dynamic wall/glass/door collisions, doorway clearance, wall sliding, and inferred floor limits.
-- [x] Overview/section preservation, contextual open doors, scale-assumption labeling, and normal/reduced-motion entry.
-- [x] Walkthrough verification: 14 navigation unit tests and 11 browser interaction checks; all prior regression suites pass.
-
-See `human-perspective.md` for physical assumptions and implementation details.
+See `verification.md` for checks and limitations, `section-view.md` for cuts, `human-perspective.md` for walking, and `architectural-elements.md` for windows and doors.

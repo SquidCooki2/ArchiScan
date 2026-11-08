@@ -1,21 +1,26 @@
 import { Component, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Environment, Lightformer, OrbitControls } from '@react-three/drei'
+import { computeBounds, floorBase, floorCount, PLAN_CUT_HEIGHT, WALL_HEIGHT } from '../../lib/geometry'
 import { buildWalkWorld } from '../../lib/walkthrough'
-import { WALL_HEIGHT } from '../../lib/geometry'
+import { useReducedMotion } from '../../lib/useReducedMotion'
 import HumanPlacement from './HumanPlacement'
 import HumanCamera from './HumanCamera'
-import { computeBounds } from '../../lib/geometry'
 import Floor from './Floor'
+import FloorSlabs from './FloorSlabs'
 import Walls from './Walls'
+import Roof from './Roof'
 import CameraRig from './CameraRig'
 import SectionPlane from './SectionPlane'
 import RegionSelection from './RegionSelection'
 import CutPlaneHandle from './CutPlaneHandle'
-import { useReducedMotion } from '../../lib/useReducedMotion'
+import EvacuationScene from './EvacuationScene'
+import { CARD } from './colors'
+
+const NO_CUT = { enabled: false, axis: 'y', position: WALL_HEIGHT, flipped: false, scope: 'all' }
 
 function Unavailable() {
-  return <div role="status" className="absolute inset-x-6 top-28 mx-auto max-w-md rounded-xl border border-white/10 bg-neutral-900 p-4 text-center text-xs leading-5 text-white/60">The 3D viewer could not start. Enable WebGL in your browser, then reload this page.</div>
+  return <div role="status" className="absolute inset-x-6 bottom-8 mx-auto max-w-md rounded-lg border border-white/10 bg-[#20262e] p-4 text-center text-sm leading-6 text-slate-300">The 3D view couldn’t start. Turn on WebGL in your browser, then reload this page.</div>
 }
 
 class ViewerBoundary extends Component {
@@ -24,41 +29,58 @@ class ViewerBoundary extends Component {
   render() { return this.state.failed ? <Unavailable /> : this.props.children }
 }
 
-export default function Viewer({ walls, modelKey, section, selectedWalls, area, onSelect, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, humanMode = 'overview', humanPlacement, humanSpawn, humanBridge, humanMovement, onHumanPreview, onHumanEnter, onHumanExit, onHumanLocked, onHumanTransition }) {
+/**
+ * `hero` is the landing page's slowly turning model. `floor` is the floor on show, or 'all'.
+ * Placing a walk's start and planning an escape both look down on one floor, cut at plan height.
+ */
+export default function Viewer({ walls, hero = false, modelKey, floor = 'all', section: userSection, sectionRange, area, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, humanMode = 'overview', humanPlacement, humanSpawn, humanMovement, onHumanPreview, onHumanEnter, onHumanExit, onHumanTransition, roofPlan, roofType, maxHeight, loadedAt, evacuation }) {
   const [manipulating, setManipulating] = useState(false)
   const bounds = useMemo(() => computeBounds(walls), [walls])
-  const walking = humanMode !== 'overview'
-  const visibleSection = useMemo(() => walking ? { ...section, enabled: false, scope: 'all' } : section, [section, walking])
-  const world = useMemo(() => buildWalkWorld(walls, bounds), [walls, bounds])
   const reducedMotion = useReducedMotion()
-  const targetBounds = useMemo(() => {
-    if (section.scope !== 'walls' || !selectedWalls.length) return { minX: -bounds.width / 2, maxX: bounds.width / 2, minZ: -bounds.depth / 2, maxZ: bounds.depth / 2 }
-    const selected = computeBounds(walls.filter((_, i) => selectedWalls.includes(i)))
-    return { minX: selected.minX - bounds.cx, maxX: selected.maxX - bounds.cx, minZ: selected.minZ - bounds.cz, maxZ: selected.maxZ - bounds.cz }
-  }, [walls, bounds, section.scope, selectedWalls])
-  const hasTarget = section.scope === 'all' || (section.scope === 'walls' ? selectedWalls.length > 0 : Boolean(area))
+  const escaping = evacuation.active
+  const placing = humanMode === 'placing'
+  const walking = humanMode === 'human'
+  const planFloor = floor === 'all' ? 0 : floor
+  const planView = useMemo(() => ({ ...NO_CUT, enabled: true, position: floorBase(planFloor) + PLAN_CUT_HEIGHT }), [planFloor])
+  const looksDown = escaping || placing
+  // Drawing a cut area needs the floor in view, so the roof and upper walls lift off for it. A
+  // finished area keeps the roof off too, or it would hide most of what the area reveals.
+  const section = walking ? NO_CUT : looksDown || drawingArea ? planView : userSection
+  const usesCutTools = !hero && !walking && !looksDown
+  const world = useMemo(() => buildWalkWorld(walls, bounds, { floor: planFloor }), [walls, bounds, planFloor])
+  const targetBounds = useMemo(() => ({ minX: -bounds.width / 2, maxX: bounds.width / 2, minZ: -bounds.depth / 2, maxZ: bounds.depth / 2 }), [bounds])
+  const hasArea = section.scope === 'area' && Boolean(area)
+  const hasTarget = section.scope === 'all' || hasArea
+  const cut = section.enabled && hasTarget
+  const region = hasArea ? area : null
+  const wallsTop = floor === 'all' ? floorCount(walls) * WALL_HEIGHT : floorBase(floor) + WALL_HEIGHT
   const shadowSize = Math.max(bounds.size, 12)
+  const cursor = placing || drawingArea || evacuation.placing ? 'crosshair' : walking ? 'move' : manipulating ? 'grabbing' : 'grab'
   return <ViewerBoundary>
-    <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [12, 12, 12], fov: 45 }} gl={{ localClippingEnabled: true, alpha: true }} style={{ cursor: humanMode === 'placing' ? 'crosshair' : humanMode === 'human' ? 'default' : drawingArea ? 'crosshair' : manipulating ? 'grabbing' : section.scope === 'walls' ? 'crosshair' : 'grab' }} fallback={<Unavailable />}>
-      <ambientLight intensity={humanMode === 'human' ? 0.8 : 0.4} />
-      <directionalLight castShadow position={[shadowSize, shadowSize * 1.5, shadowSize * 0.75]} intensity={2} shadow-mapSize={[2048, 2048]} shadow-autoUpdate={humanMode !== 'human'} shadow-needsUpdate={humanMode === 'human'} shadow-camera-left={-shadowSize} shadow-camera-right={shadowSize} shadow-camera-top={shadowSize} shadow-camera-bottom={-shadowSize} shadow-camera-far={shadowSize * 5} shadow-normalBias={0.03} />
+    <Canvas shadows="percentage" dpr={[1, 1.75]} camera={{ position: [12, 12, 12], fov: 45 }} gl={{ localClippingEnabled: true, alpha: true }} style={{ cursor }} fallback={<Unavailable />}>
+      <ambientLight intensity={walking ? 0.9 : 0.85} />
+      <directionalLight castShadow position={[shadowSize * 0.8, shadowSize * 1.5, shadowSize * 1.1]} intensity={2.1} shadow-mapSize={[2048, 2048]} shadow-autoUpdate={!walking} shadow-needsUpdate={walking} shadow-camera-left={-shadowSize} shadow-camera-right={shadowSize} shadow-camera-top={shadowSize} shadow-camera-bottom={-shadowSize} shadow-camera-far={shadowSize * 5} shadow-normalBias={0.03} />
       {/* A local studio environment avoids a network-dependent HDR download. */}
       <Environment resolution={64}>
         <Lightformer position={[0, 8, 0]} rotation-x={Math.PI / 2} scale={[15, 15, 1]} intensity={1.5} />
-        <Lightformer position={[-8, 4, 0]} rotation-y={Math.PI / 2} scale={[10, 6, 1]} color="#a5b4fc" intensity={1} />
+        <Lightformer position={[-8, 4, 0]} rotation-y={Math.PI / 2} scale={[10, 6, 1]} color="#c9d6e6" intensity={1} />
       </Environment>
-      <Floor bounds={bounds} walkthrough={walking} />
-      {humanMode === 'human' && <mesh name="inferred-walkthrough-ceiling" position-y={WALL_HEIGHT} rotation-x={Math.PI / 2}><planeGeometry args={[bounds.width, bounds.depth]} /><meshStandardMaterial color="#e8e6e1" roughness={1} /></mesh>}
-      {walls.length > 0 && <Walls key={modelKey} walls={walls} bounds={bounds} section={visibleSection} area={walking ? null : area} selectedWalls={selectedWalls} selecting={!walking && section.scope === 'walls'} onSelect={onSelect} openDoors={walking} />}
-      {walls.length > 0 && !walking && section.enabled && hasTarget && <SectionPlane bounds={bounds} targetBounds={targetBounds} section={section} area={area} />}
-      {walls.length > 0 && !walking && section.scope === 'area' && <RegionSelection bounds={bounds} area={area} drawing={drawingArea}
+      <Floor bounds={bounds} walkthrough={walking} base={floorBase(planFloor)} />
+      {walking && <mesh name="walkthrough-ceiling" position-y={floorBase(planFloor) + WALL_HEIGHT} rotation-x={Math.PI / 2}><planeGeometry args={[bounds.width, bounds.depth]} /><meshStandardMaterial color={CARD} roughness={1} /></mesh>}
+      <Walls key={modelKey} walls={walls} bounds={bounds} section={section} area={usesCutTools ? area : null} openDoors={walking || escaping} visibleFloor={walking ? planFloor : floor} />
+      {!walking && <FloorSlabs walls={walls} bounds={bounds} section={section} cut={cut} region={region} visibleFloor={floor} ground={!escaping} />}
+      {floor === 'all' && !walking && !looksDown && !drawingArea && !hasArea && <Roof key={`${modelKey}-${roofType}`} plan={roofPlan} type={roofType} bounds={bounds} section={section} cut={cut} loadedAt={loadedAt} reducedMotion={reducedMotion} />}
+      {escaping && !hero && <EvacuationScene evacuation={evacuation} bounds={bounds} onDragging={setManipulating} reducedMotion={reducedMotion} />}
+      {usesCutTools && (drawingArea || section.scope === 'area') && <RegionSelection bounds={bounds} area={area} top={wallsTop} drawing={drawingArea}
         onArea={onArea} onComplete={onCompleteArea} onCancel={onCancelArea} onDragging={setManipulating} section={section} onPosition={onPosition} />}
-      {walls.length > 0 && !walking && section.enabled && hasTarget && !drawingArea && <CutPlaneHandle bounds={bounds} targetBounds={targetBounds}
-        section={section} area={area} onPosition={onPosition} onDragging={setManipulating} />}
-      <OrbitControls makeDefault enabled={humanMode !== 'human' && !drawingArea && !manipulating} enableDamping dampingFactor={0.08} maxPolarAngle={Math.PI / 2 - 0.05} />
-      <CameraRig bounds={bounds} fitKey={resetKey} reducedMotion={reducedMotion} hasModel={walls.length > 0} active={!walking} />
-      {humanMode === 'placing' && <HumanPlacement world={world} placement={humanPlacement} bridge={humanBridge} onPreview={onHumanPreview} onEnter={onHumanEnter} onCancel={onHumanExit} />}
-      {walking && <HumanCamera mode={humanMode} spawn={humanSpawn} world={world} bridge={humanBridge} movement={humanMovement} reducedMotion={reducedMotion} onExit={onHumanExit} onLocked={onHumanLocked} onTransition={onHumanTransition} />}
+      {usesCutTools && cut && !drawingArea && <>
+        <SectionPlane bounds={bounds} targetBounds={targetBounds} section={section} area={area} top={wallsTop} />
+        <CutPlaneHandle bounds={bounds} targetBounds={targetBounds} section={section} area={area} top={wallsTop} range={sectionRange} onPosition={onPosition} onDragging={setManipulating} />
+      </>}
+      <OrbitControls makeDefault enabled={!walking && !drawingArea && !manipulating} autoRotate={hero && !reducedMotion} autoRotateSpeed={0.35} enableDamping dampingFactor={0.08} maxPolarAngle={Math.PI / 2 - 0.05} />
+      <CameraRig bounds={bounds} fitKey={resetKey} reducedMotion={reducedMotion} hasModel active={!walking} framing={hero ? 'hero' : 'panel'} height={looksDown ? floorBase(planFloor) + PLAN_CUT_HEIGHT : maxHeight} view={looksDown ? 'plan' : 'perspective'} />
+      {placing && <HumanPlacement world={world} placement={humanPlacement} onPreview={onHumanPreview} onEnter={onHumanEnter} onCancel={onHumanExit} />}
+      {walking && <HumanCamera spawn={humanSpawn} world={world} movement={humanMovement} reducedMotion={reducedMotion} onExit={onHumanExit} onTransition={onHumanTransition} />}
     </Canvas>
   </ViewerBoundary>
 }

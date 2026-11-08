@@ -25,7 +25,7 @@ An opening must start at or above the floor and below 2.7 m. Its height must be 
 
 ## Selection and sections
 
-The **Elements** tool selects an entire source wall/window/door even though each opening has several meshes. Area selection partitions every physical part at the selected region's boundary; all portions outside it stay intact. Selected parts retain their material behavior, so selected glazing remains transparent.
+Area selection partitions every physical part at the selected region's boundary; all portions outside it stay intact. Selected parts retain their material behavior, so selected glazing remains transparent.
 
 Each part carries its real bottom and top elevation. Horizontal caps appear only if the cut intersects that span; vertical caps extend only through that span. A cut through a window's glass zone therefore does not generate a solid wall cap across the aperture. Door panels, frames, handles, glazing, and structural infill all support horizontal and X/Z cuts and direct 3D manipulation.
 

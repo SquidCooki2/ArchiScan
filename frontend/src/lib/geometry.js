@@ -3,6 +3,12 @@ export const PLAN_CUT_HEIGHT = 1.2
 export const MIN_CUT_HEIGHT = 0.1
 export const ELEMENT_TYPES = ['wall', 'window', 'door']
 export const elementType = element => element.type ?? 'wall'
+export const MAX_FLOORS = 5
+
+/** A missing floor means the ground floor, so single-floor payloads stay valid. */
+export const elementFloor = element => element.floor ?? 0
+export const floorBase = floor => floor * WALL_HEIGHT
+export const floorCount = elements => elements.reduce((count, element) => Math.max(count, elementFloor(element) + 1), 1)
 
 export function openingDimensions(element) {
   const window = elementType(element) === 'window'
@@ -37,7 +43,7 @@ export function computeBounds(walls) {
 export function validateWalls(walls) {
   if (!Array.isArray(walls) || !walls.length) throw new Error('No walls were found. Try a clearer floorplan image.')
   if (!walls.every(w => {
-    if (!w || !ELEMENT_TYPES.includes(w.type === undefined ? 'wall' : w.type) || !['x', 'z', 'width', 'depth', 'rotation'].every(key => Number.isFinite(w[key])) || w.width <= 0 || w.depth <= 0 || w.rotation < 0 || w.rotation >= Math.PI) return false
+    if (!w || (w.floor !== undefined && (!Number.isInteger(w.floor) || w.floor < 0)) || !ELEMENT_TYPES.includes(w.type === undefined ? 'wall' : w.type) || !['x', 'z', 'width', 'depth', 'rotation'].every(key => Number.isFinite(w[key])) || w.width <= 0 || w.depth <= 0 || w.rotation < 0 || w.rotation >= Math.PI) return false
     if (elementType(w) === 'wall') return true
     if (w.sillHeight !== undefined && !Number.isFinite(w.sillHeight)) return false
     const { sillHeight, height } = openingDimensions(w)
