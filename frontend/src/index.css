@@ -1,19 +1,1 @@
 @import "tailwindcss";
-
-/* Design tokens only (Tailwind v4 theme config). No custom selectors. */
-@theme {
-  --font-sans: "Archivo", ui-sans-serif, system-ui, sans-serif;
-
-  /* Cyanotype: the blueprint accent. Used for the section-cut fill and focus. */
-  --color-blueprint-200: #c4e1f4;
-  --color-blueprint-300: #8ec5e8;
-  --color-blueprint-400: #5ea8d8;
-  --color-blueprint-500: #3a8cc4;
-  --color-blueprint-900: #10283a;
-
-  --animate-scan: scan 2.4s cubic-bezier(0.45, 0, 0.55, 1) infinite;
-  @keyframes scan {
-    0% { transform: translateY(-100%); }
-    100% { transform: translateY(100%); }
-  }
-}
