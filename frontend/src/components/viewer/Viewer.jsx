@@ -24,7 +24,7 @@ class ViewerBoundary extends Component {
   render() { return this.state.failed ? <Unavailable /> : this.props.children }
 }
 
-export default function Viewer({ walls, modelKey, section, selectedWalls, area, onSelect, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, humanMode, humanPlacement, humanSpawn, humanBridge, humanMovement, onHumanPreview, onHumanEnter, onHumanExit, onHumanLocked, onHumanTransition }) {
+export default function Viewer({ walls, modelKey, section, selectedWalls, area, onSelect, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, humanMode = 'overview', humanPlacement, humanSpawn, humanBridge, humanMovement, onHumanPreview, onHumanEnter, onHumanExit, onHumanLocked, onHumanTransition }) {
   const [manipulating, setManipulating] = useState(false)
   const bounds = useMemo(() => computeBounds(walls), [walls])
   const walking = humanMode !== 'overview'

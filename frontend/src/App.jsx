@@ -198,7 +198,7 @@ export default function App() {
 
   return <div className="relative min-h-svh overflow-hidden bg-neutral-950 font-sans text-white selection:bg-indigo-400/30">
     <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_50%_35%,#222035_0%,#0a0a0a_65%)]" />
-    <div className={`fixed inset-0 transition-all duration-700 motion-reduce:transition-none ${hasModel ? 'opacity-100' : 'opacity-40 blur-[2px]'}`} aria-label="Interactive 3D floorplan. Drag to orbit, scroll to zoom, right-drag to pan.">
+    <div className={`fixed inset-0 transition-all duration-700 motion-reduce:transition-none ${hasModel ? 'opacity-100' : 'opacity-40 blur-[2px]'}`} aria-label={humanMode === 'human' ? 'Human Perspective. WASD or arrows to walk, mouse or touch drag to look, Escape to exit.' : humanMode === 'placing' ? 'Place a human on clear model floor to start a walkthrough.' : 'Interactive 3D floorplan. Drag to orbit, scroll to zoom, right-drag to pan.'}>
       <Suspense fallback={null}><Viewer walls={walls} modelKey={modelKey} section={section} selectedWalls={selectedWalls} area={selectedArea} onSelect={selectWall} resetKey={resetKey} drawingArea={drawingArea} onArea={updateArea} onCompleteArea={completeArea} onCancelArea={cancelArea} onPosition={updatePosition} humanMode={humanMode} humanPlacement={humanPlacement} humanSpawn={humanSpawn} humanBridge={humanBridge} humanMovement={humanMovement} onHumanPreview={setHumanPlacement} onHumanEnter={enterHuman} onHumanExit={exitHuman} onHumanLocked={setHumanLocked} onHumanTransition={setHumanTransition} /></Suspense>
     </div>
     <div inert={loading}>

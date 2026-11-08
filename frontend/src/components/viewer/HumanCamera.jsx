@@ -9,6 +9,7 @@ const keyDirection = { KeyW: 'forward', ArrowUp: 'forward', KeyS: 'backward', Ar
 function restore(get, snapshot) {
   if (!snapshot) return
   const { camera, controls, size } = get()
+  if (!camera || !controls) return
   const damping = controls.enableDamping
   controls.enableDamping = false
   controls.update()
