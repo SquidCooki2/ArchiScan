@@ -1,18 +1,11 @@
-import { useRef, useState } from 'react'
 import Icon from './Icon'
 
-export default function UploadZone({ onBrowse, onFile, onSample }) {
-  const [dragging, setDragging] = useState(false)
-  const depth = useRef(0)
+export default function UploadZone({ onBrowse, onSample, dragging = false }) {
   return <section className="pointer-events-auto w-full max-w-xl text-center" aria-labelledby="upload-heading">
     <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-indigo-400/20 bg-indigo-400/10 px-3 py-1.5 text-[10px] tracking-[0.18em] text-indigo-200 uppercase"><span className="size-1.5 rounded-full bg-indigo-300" />A new perspective</div>
     <h1 id="upload-heading" className="text-4xl leading-[1.1] font-light tracking-tight sm:text-6xl">Your plans.<br /><span className="text-indigo-300">Another dimension.</span></h1>
     <p className="mx-auto mt-5 max-w-sm text-sm leading-6 text-neutral-400">Bring your floorplan into focus. Upload an image to explore your space in interactive 3D.</p>
     <button type="button" onClick={onBrowse}
-      onDragEnter={e => { e.preventDefault(); depth.current++; setDragging(true) }}
-      onDragOver={e => { e.preventDefault(); e.dataTransfer.dropEffect = 'copy' }}
-      onDragLeave={e => { e.preventDefault(); if (--depth.current <= 0) { depth.current = 0; setDragging(false) } }}
-      onDrop={e => { e.preventDefault(); depth.current = 0; setDragging(false); if (e.dataTransfer.files.length) onFile(e.dataTransfer.files[0]) }}
       className={`group mt-8 flex min-h-44 w-full flex-col items-center justify-center gap-3 rounded-2xl border border-dashed px-6 py-7 backdrop-blur-xl transition-all duration-300 focus-visible:outline-2 focus-visible:outline-offset-4 focus-visible:outline-indigo-400 motion-reduce:transition-none ${dragging ? 'scale-[1.02] border-indigo-300 bg-indigo-400/15' : 'border-white/20 bg-white/5 hover:border-indigo-400/60 hover:bg-white/10'}`}>
       <span className="grid size-11 place-items-center rounded-xl border border-white/10 bg-white/5 text-indigo-200 transition-transform duration-300 group-hover:-translate-y-1"><Icon name="upload" /></span>
       <span className="text-sm font-medium text-white/90">{dragging ? 'Drop your floorplan here' : 'Drop your floorplan here, or browse'}</span>

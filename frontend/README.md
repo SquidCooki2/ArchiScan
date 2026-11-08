@@ -28,8 +28,8 @@ Environment values are embedded at build time. Set `VITE_API_URL` before `npm ru
 
 ## Controls
 
-- Drag to orbit, scroll/pinch to zoom, right-drag/two-finger drag to pan.
-- Enable **Section view**, then adjust the height. Accent-colored horizontal caps fill cut walls.
+- Drag to orbit, scroll/pinch to zoom, right-drag/two-finger drag to pan. Drop a replacement image anywhere in the window.
+- Enable **Section view**, then adjust the height, or use **Plan cut at 1.2 m**. Accent-colored horizontal caps fill cut walls.
 - **Reset section** restores 2.70 m and disables clipping; **Fit to view** restores the fitted camera.
 - **New upload** replaces the model only after successful parsing. Cancel a request with the button or Escape.
 

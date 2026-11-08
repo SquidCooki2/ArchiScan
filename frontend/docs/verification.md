@@ -3,13 +3,13 @@
 ## Automated checks
 
 - `npm run lint`: passed without warnings.
-- `npm test`: four geometry tests passed (rotated bounds, asymmetric sample orientation, invalid payloads, empty scene).
-- `npm run build`: passed. Vite reports a large lazy-loaded viewer chunk (~964 kB minified / 263 kB gzip), which includes the 3D engine. Further bundle optimization is optional.
+- `npm test`: five geometry tests passed (rotated bounds, asymmetric sample orientation, invalid payloads, empty scene).
+- `npm run build`: passed. Vite reports a large lazy-loaded viewer chunk (~986 kB minified / 269 kB gzip), which includes the 3D engine. Further bundle optimization is optional.
 - `git diff --check`: passed.
 
 ## Browser checks
 
-Verified with headless Chrome/Playwright against the local Vite server. Desktop viewport: 1440 × 1000. Narrow viewport: 390 × 844. All 19 checks passed:
+Verified with headless Chrome/Playwright against the local Vite server. Desktop viewport: 1440 × 1000. Narrow viewport: 390 × 844. All 22 checks passed after merging both frontend implementations:
 
 1. Initial upload UI and WebGL canvas render.
 2. Wrong file type displays an error toast.
@@ -30,6 +30,9 @@ Verified with headless Chrome/Playwright against the local Vite server. Desktop 
 17. Toasts dismiss automatically after six seconds.
 18. Keyboard file selection and Escape cancellation work.
 19. Drag-and-drop upload works.
+20. The incoming plan-cut shortcut enables clipping at 1.2 m.
+21. The uploaded thumbnail stays valid after a failed replacement.
+22. Files dropped onto the viewer replace the model successfully.
 
 Screenshots were visually reviewed for the upload screen, full-height model, capped section, and narrow-screen layout. No application console warnings or runtime errors remained. Software-GPU screenshot readback diagnostics were excluded from application-console checks.
 
@@ -37,7 +40,7 @@ API responses were intercepted for browser testing; this verifies the frontend r
 
 ## Remaining integration work
 
-The backend currently has no API implementation, so Task 7 remains open. Once it is ready:
+The backend API was added in the merge. Live Claude parsing remains unverified, so Task 7 is still open. To verify it:
 
 1. Configure `frontend/.env` using `.env.example`; restart Vite without `?mock=1`.
 2. Start the backend on port 3000 with CORS allowing `http://localhost:5173`.
@@ -45,4 +48,8 @@ The backend currently has no API implementation, so Task 7 remains open. Once it
 4. Confirm the model is fitted automatically and the section slider remains smooth with real payloads.
 5. Verify actual backend failures and CORS behavior. Mark Task 7 complete only after these checks pass.
 
-No backend or shared-contract files were changed.
+## Merge verification
+
+Preserved the incoming backend API and merged frontend features: the richer diagonal-wall sample, plan-cut shortcut, drop-anywhere uploads, upload thumbnail, section-plane visual, animated camera fitting, and reactive reduced-motion support. Kept strict API validation, cancellation/timeout handling, the Three.js compatibility pin, and actual horizontal cut caps.
+
+Backend `npm test`: all ten tests passed with mocked Claude responses. The project M1 parallel-build milestone is complete; live Claude/floorplan integration remains open.

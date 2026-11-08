@@ -1,8 +1,10 @@
 export const WALL_HEIGHT = 2.7
+export const PLAN_CUT_HEIGHT = 1.2
+export const MIN_CUT_HEIGHT = 0.1
 
 // Image-space clockwise angles become negative Y rotations in three.js.
 export function computeBounds(walls) {
-  if (!walls.length) return { minX: -4, maxX: 4, minZ: -4, maxZ: 4, cx: 0, cz: 0, size: 8, width: 8, depth: 8 }
+  if (!walls.length) return { minX: -4, maxX: 4, minZ: -4, maxZ: 4, cx: 0, cz: 0, size: 8, width: 8, depth: 8, sizeX: 8, sizeZ: 8 }
   let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity
   for (const wall of walls) {
     const c = Math.abs(Math.cos(wall.rotation))
@@ -15,7 +17,7 @@ export function computeBounds(walls) {
     maxZ = Math.max(maxZ, wall.z + dz)
   }
   const width = maxX - minX, depth = maxZ - minZ
-  return { minX, maxX, minZ, maxZ, cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, size: Math.max(width, depth), width, depth }
+  return { minX, maxX, minZ, maxZ, cx: (minX + maxX) / 2, cz: (minZ + maxZ) / 2, size: Math.max(width, depth), width, depth, sizeX: width, sizeZ: depth }
 }
 
 export function validateWalls(walls) {

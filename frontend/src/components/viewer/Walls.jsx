@@ -3,6 +3,7 @@ import { useEffect, useMemo, useRef } from 'react'
 import { useFrame } from '@react-three/fiber'
 import * as THREE from 'three'
 import { WALL_HEIGHT } from '../../lib/geometry'
+import { useReducedMotion } from '../../lib/useReducedMotion'
 
 function Wall({ wall, index, material, capMaterial, clipEnabled, clipHeight, reducedMotion }) {
   const body = useRef()
@@ -32,7 +33,7 @@ export default function Walls({ walls, bounds, clipEnabled, clipHeight }) {
   const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, -1, 0), WALL_HEIGHT), [])
   const material = useMemo(() => new THREE.MeshStandardMaterial({ color: '#e8e6e1', roughness: 0.85, metalness: 0, side: THREE.DoubleSide, clipShadows: true }), [])
   const capMaterial = useMemo(() => new THREE.MeshBasicMaterial({ color: '#a5b4fc', side: THREE.DoubleSide, polygonOffset: true, polygonOffsetFactor: -1, polygonOffsetUnits: -1 }), [])
-  const reducedMotion = useMemo(() => window.matchMedia('(prefers-reduced-motion: reduce)').matches, [])
+  const reducedMotion = useReducedMotion()
   useEffect(() => {
     plane.constant = clipHeight
     material.clippingPlanes = clipEnabled ? [plane] : []

@@ -13,19 +13,28 @@ test('camera bounds include the thickness of diagonal and vertical walls', () =>
   assert.equal(vertical.depth, 8)
 })
 
-test('asymmetric sample has an eight-meter L footprint with its missing corner at bottom right', () => {
+test('asymmetric sample has a ten-by-eight-meter L footprint with its missing corner at bottom right', () => {
   const sample = JSON.parse(readFileSync(new URL('../src/samples/sampleWalls.json', import.meta.url)))
   validateWalls(sample)
   const bounds = computeBounds(sample)
-  assert.ok(Math.abs(bounds.minX) < 1e-10)
-  assert.ok(Math.abs(bounds.minZ) < 1e-10)
-  assert.ok(Math.abs(bounds.maxX - 8) < 1e-10)
-  assert.ok(Math.abs(bounds.maxZ - 8) < 1e-10)
+  assert.ok(Math.abs(bounds.minX) < 0.001)
+  assert.ok(Math.abs(bounds.minZ) < 0.001)
+  assert.ok(Math.abs(bounds.maxX - 10) < 0.001)
+  assert.ok(Math.abs(bounds.maxZ - 8) < 0.001)
   // Rotation -PI/2 maps local +X to world +Z, preserving image-down orientation.
-  const wall = sample[3]
+  const wall = sample[4]
   const endpoint = [wall.x + Math.cos(-wall.rotation) * wall.width / 2, wall.z - Math.sin(-wall.rotation) * wall.width / 2]
-  assert.ok(Math.abs(endpoint[0] - 4.1) < 1e-10)
-  assert.ok(Math.abs(endpoint[1] - 7.9) < 1e-10)
+  assert.ok(Math.abs(endpoint[0] - 6.1) < 0.001)
+  assert.ok(Math.abs(endpoint[1] - 8) < 0.001)
+})
+
+test('incoming diagonal wall points down and right in image coordinates', () => {
+  const sample = JSON.parse(readFileSync(new URL('../src/samples/sampleWalls.json', import.meta.url)))
+  const diagonal = sample[1]
+  const dx = Math.cos(-diagonal.rotation) * diagonal.width / 2
+  const dz = -Math.sin(-diagonal.rotation) * diagonal.width / 2
+  assert.ok(dx > 0 && dz > 0)
+  assert.ok(Math.abs(dx - 0.45) < 0.001 && Math.abs(dz - 0.45) < 0.001)
 })
 
 test('bad server geometry is rejected before reaching the renderer', () => {
