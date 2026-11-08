@@ -183,3 +183,54 @@ test('upstream errors map to 429 / 502 / 504 / 500', async () => {
     console.error = origErr;
   }
 });
+
+// ---- Evacuation brief ----
+const FACTS = {
+  outcome: 'route',
+  rooms: [{ id: 0, name: 'Room 1' }, { id: 1, name: 'Room 2' }],
+  steps: ['Walk 2.5 m to the door.'],
+};
+
+test('POST /api/evacuation-brief returns the brief and keeps only names of real rooms', async () => {
+  let received;
+  const claude = {
+    writeEvacuationBrief: async (facts, image) => {
+      received = { facts, image };
+      return { brief: ' Go now. ', roomNames: [{ id: 1, name: 'Kitchen' }, { id: 9, name: 'Invented' }, { id: 0, name: '' }] };
+    },
+  };
+  await withServer(claude, async (post) => {
+    const res = await post('/api/evacuation-brief', { facts: FACTS, image: IMG, mediaType: 'image/png' });
+    assert.equal(res.status, 200);
+    assert.deepEqual(res.body, { brief: 'Go now.', roomNames: [{ id: 1, name: 'Kitchen' }] });
+    assert.deepEqual(received.facts, FACTS);
+    assert.equal(received.image.mediaType, 'image/png');
+  });
+});
+
+test('POST /api/evacuation-brief works without an image', async () => {
+  let received = 'unset';
+  const claude = { writeEvacuationBrief: async (facts, image) => { received = image; return { brief: 'Go now.', roomNames: [] }; } };
+  await withServer(claude, async (post) => {
+    const res = await post('/api/evacuation-brief', { facts: FACTS });
+    assert.equal(res.status, 200);
+    assert.equal(received, null);
+  });
+});
+
+test('POST /api/evacuation-brief rejects bad facts, big images, and unusable model output', async () => {
+  const good = { writeEvacuationBrief: async () => ({ brief: 'Go.', roomNames: [] }) };
+  await withServer(good, async (post) => {
+    assert.equal((await post('/api/evacuation-brief', {})).status, 400);
+    assert.equal((await post('/api/evacuation-brief', { facts: { ...FACTS, outcome: 'guess' } })).status, 400);
+    assert.equal((await post('/api/evacuation-brief', { facts: { ...FACTS, steps: [1] } })).status, 400);
+    const big = Buffer.alloc(200).toString('base64');
+    assert.equal((await post('/api/evacuation-brief', { facts: FACTS, image: big })).status, 413);
+  });
+  const bad = { writeEvacuationBrief: async () => ({ brief: '  ', roomNames: [] }) };
+  await withServer(bad, async (post) => {
+    const res = await post('/api/evacuation-brief', { facts: FACTS });
+    assert.equal(res.status, 502);
+    assert.equal(res.body.error.code, 'MODEL_OUTPUT_INVALID');
+  });
+});

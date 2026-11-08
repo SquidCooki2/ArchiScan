@@ -1,5 +1,5 @@
 import * as THREE from 'three'
-import { WALL_HEIGHT } from './geometry.js'
+import { elementFloor, floorBase, floorCount, WALL_HEIGHT } from './geometry.js'
 
 /**
  * Roofs are generated entirely on the frontend from the wall data (no API change).
@@ -267,8 +267,12 @@ function decompose({ mask, nu, nv, cell }) {
  * Computes where roof pieces go. Each piece is a rectangle in plan coordinates
  * (same convention as walls): { x, z, length, width, rotation }, with `length` along `rotation`.
  */
-export function computeRoofPlan(elements) {
-  if (!elements?.length) return { rects: [] }
+export function computeRoofPlan(allElements) {
+  if (!allElements?.length) return { rects: [], base: WALL_HEIGHT }
+  // The roof covers the top floor and sits on its walls.
+  const topFloor = floorCount(allElements) - 1
+  const elements = allElements.filter((element) => elementFloor(element) === topFloor)
+  const base = floorBase(topFloor) + WALL_HEIGHT
   const angle = dominantAngle(elements)
   const items = toFrame(elements, angle)
   const cos = Math.cos(angle)
@@ -304,16 +308,16 @@ export function computeRoofPlan(elements) {
       rotation: alongU ? angle : angle + Math.PI / 2,
     }
   })
-  return { rects }
+  return { rects, base }
 }
 
 const riseFor = (width) => Math.tan(ROOF_PITCH) * (width / 2 + ROOF_OVERHANG)
 
 /** Highest point of the building with this roof, in meters. */
 export function roofTopHeight(plan, type) {
-  if (!plan.rects.length) return WALL_HEIGHT
-  if (type === 'flat') return WALL_HEIGHT + FLAT_ROOF_THICKNESS
-  return WALL_HEIGHT + Math.max(...plan.rects.map((r) => riseFor(r.width)))
+  if (!plan.rects.length) return plan.base
+  if (type === 'flat') return plan.base + FLAT_ROOF_THICKNESS
+  return plan.base + Math.max(...plan.rects.map((r) => riseFor(r.width)))
 }
 
 /**

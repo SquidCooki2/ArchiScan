@@ -1,13 +1,13 @@
-import { PLAN_CUT_HEIGHT, WALL_HEIGHT } from './geometry.js'
+import { MIN_CUT_HEIGHT, PLAN_CUT_HEIGHT, WALL_HEIGHT } from './geometry.js'
 
 const EPSILON = 1e-7
 
-export const createSection = () => ({ enabled: false, axis: 'y', position: WALL_HEIGHT, flipped: false, scope: 'area' })
+export const createSection = () => ({ enabled: false, axis: 'y', position: WALL_HEIGHT, flipped: false, scope: 'all' })
 
-export function cutRange(bounds, axis, area = null, maxHeight = WALL_HEIGHT) {
+export function cutRange(bounds, axis, area = null, maxHeight = WALL_HEIGHT, minHeight = MIN_CUT_HEIGHT) {
   if (area && axis === 'x') return { min: area.minX + bounds.width / 2, max: area.maxX + bounds.width / 2 }
   if (area && axis === 'z') return { min: area.minZ + bounds.depth / 2, max: area.maxZ + bounds.depth / 2 }
-  return { min: axis === 'y' ? 0.1 : 0, max: axis === 'y' ? maxHeight : axis === 'x' ? bounds.width : bounds.depth }
+  return { min: axis === 'y' ? minHeight : 0, max: axis === 'y' ? maxHeight : axis === 'x' ? bounds.width : bounds.depth }
 }
 
 export function defaultCutPosition(bounds, axis, area = null) {

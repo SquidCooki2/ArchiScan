@@ -1,35 +1,34 @@
-# Human Perspective Mode
+# Walk mode
 
-## Enter and explore
+## Start and move
 
-Load a model, then choose **Human Perspective** in the header (**Walk** on narrow screens). The model returns to its full structure for placement; current section settings are kept for overview.
+Load a model and choose **Walk** at the top of the screen. The view looks down on one floor, cut at plan height, so the floor is easy to point at.
 
-- Drag the person from the placement panel onto clear model floor. The full-size ghost figure and clearance ring preview the position; a valid drop enters the walkthrough.
-- Alternatively click a floor point, inspect the preview/status, and select **Enter Human Perspective**.
-- The figure turns red and entry stays disabled when the body intersects a solid object or the inferred floor boundary. Its feet start at floor height, not at the wall surface under the cursor.
-- The optional numeric inputs set a position in model meters from the plan's left/top extent. This provides a keyboard-accessible alternative to dragging.
+- Click clear floor to start walking there. A figure previews the spot as the pointer moves, and turns red with a short reason when the spot is inside a wall or outside the building.
+- **Start in the middle** picks the nearest clear spot to the middle of the plan. It's also the keyboard path into a walk.
+- On a multi-floor model, **Floor** chooses which floor to walk on. Floors don't connect, because the plan data has no stairs.
 
-In human view:
+While walking:
 
-- **WASD / arrow keys** move on the floor. Diagonal input is normalized.
-- Drag to look, or select **Enable mouse look** / click the scene for optional pointer lock and unrestricted mouse movement.
-- On touch screens, drag to look and use the on-screen walking arrows. Dragging the person from the panel also works with touch.
-- **Exit Human Perspective** or **Escape** returns to overview. Unlocking pointer capture also exits safely.
-- **Choose another starting point** restores the overview for repositioning. Cancelling placement preserves the original model and cut settings.
+- **W A S D or arrow keys** move on the floor. Diagonal input is normalized.
+- Drag to look. On touch screens, use the same drag and the on-screen arrows.
+- **Pick another spot** returns to the plan view. **Esc**, or choosing another mode, leaves the walk.
 
-Entry uses a short fade into the validated position, respecting reduced motion. The camera does not fly through walls to reach the floor. Resizing the viewport adjusts projection without moving the person.
+Entry uses a short fade into the validated position, respecting reduced motion. Resizing adjusts projection without moving the person.
+
+Drag-to-place, typed coordinates, and pointer-lock mouse look were removed on 2026-11-08 to keep the start simple.
 
 ## Scale and assumptions
 
-- Eye height: **1.65 m** above a flat floor at Y = 0.
+- Eye height: **1.65 m** above the floor you're on.
 - Walking speed: **1.4 m/s**, with smooth acceleration/deceleration.
 - Collision body: **1.8 m** tall, **0.2 m** horizontal radius.
 - Perspective: a moderate **75° horizontal field of view**, capped at **65° vertical** on portrait screens. Overview camera fitting/view offsets are disabled in human view.
 - Backend X/Z positions, rotations, widths, depths, and opening dimensions are used without rescaling.
 
-**Scale is labeled unverified.** The current API provides meter-valued geometry but no measurement-confidence or calibration metadata. The frontend cannot claim that AI-estimated dimensions are verified real-world measurements. Wall/ceiling height is the existing assumed **2.7 m**, and flat floor/ceiling coverage is inferred from the plan's bounds. These assumptions are shown in the placement and walkthrough UI.
+**Scale is estimated.** The API returns meters but no confidence or calibration data, so the frontend doesn't present these dimensions as measured. Wall and ceiling height is an assumed **2.7 m**, which the start panel states, and flat floor and ceiling coverage is inferred from the plan's bounds.
 
-The current data describes a single floor. There are no stair, level, or floor-polygon records; the walkthrough does not invent multi-floor geometry. An inferred ceiling is displayed only in human view. Incomplete walls/open edges are handled by keeping the person within the inferred floor boundary, rather than allowing a fall into missing geometry.
+Each floor is a separate walk, with an inferred ceiling shown only while walking. Incomplete walls and open edges are handled by keeping the person within the inferred floor boundary, rather than allowing a fall into missing geometry.
 
 ## Physical constraints
 
@@ -41,16 +40,10 @@ Movement resolves in small substeps to prevent tunneling and separately along ea
 
 ## Integration
 
-- `HumanPlacement.jsx` raycasts pointer/drop locations to the floor, validates body clearance, and renders the human marker. A ref API connects DOM drag/touch controls to the R3F scene.
-- `HumanCamera.jsx` owns first-person input and projection while active. It records overview position/orientation, FOV, view offset, near/far planes, zoom, and orbit target, then restores them on exit.
-- `CameraRig.jsx` suspends fitting while placing/walking. It preserves the restored view on return, refitting when the model or viewport changed.
-- `HumanPerspectiveControls.jsx` supplies placement, navigation, instructions, and scale labeling.
-- `elementParts.js` supports the contextual open-door transform; `Walls.jsx` renders the same parts used by collision checks.
+- `HumanPlacement.jsx` raycasts the pointer to the chosen floor, validates body clearance, and renders the preview figure.
+- `HumanCamera.jsx` owns first-person input and projection while mounted. It records the overview camera and restores it on exit.
+- `CameraRig.jsx` suspends fitting while walking and moves to the plan view while choosing a spot.
+- `WalkPanel.jsx` supplies the start panel and the walking controls.
+- `lib/walkthrough.js` builds colliders for one floor from the same parts `Walls.jsx` renders.
 
-The underlying model, selection, and section configuration stay unchanged. Cuts and selection handles are suspended during placement/walking so visible structure matches collision geometry; they return on exit. Static walkthrough shadows are cached until leaving the mode. No additional runtime dependencies or backend API changes were introduced.
-
-## Verification
-
-Fourteen navigation tests cover dimensions/FOV, rotated solids, corner clearance, open/closed doors, short/narrow doorways, actual glazing, normalized movement, tunneling, sliding, incomplete floor bounds, undersized floors, rotated doors, and all internal door passages in the saved backend sample. Together with existing geometry tests, all 43 unit tests pass.
-
-Browser checks cover valid/blocked placement, floor-level previews, native avatar drag-and-drop, human eye height/projection, WASD/arrows, wall collisions, actual doorway traversal, drag look, pointer capture/Escape, overview/section restoration, reposition/cancel, mobile touch placement/navigation, normal-motion entry, and resizing. See `verification.md` for the complete check record.
+Static walkthrough shadows are cached until leaving the mode. Tests cover dimensions, rotated solids, door passages, tunneling, sliding, floor limits, per-floor collisions, and the suggested start. See `verification.md`.

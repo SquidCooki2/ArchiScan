@@ -131,3 +131,29 @@ All 55 existing browser regression checks passed again. Eleven new walkthrough c
 11. Normal-motion fade entry and viewport resizing preserve eye height and return correctly to overview.
 
 No application console warnings or runtime errors were observed. Placement, first-person interior, and mobile screenshots were reviewed. Walking retains meter-scale timing on longer frames using collision substeps, and static walkthrough shadows are cached. The implementation adds no runtime dependency and does not change the backend schema. Scale remains explicitly unverified; flat floor/ceiling coverage and 2.7 m wall height are inferred assumptions. See `human-perspective.md`.
+## Roofs, openings, and escape route mode
+
+`npm test` passes 36 frontend tests and `npm test` in `backend/` passes 14. Lint and the production build are clean. Headless Chrome checks on the saved apartment, at 1440 × 960 and 390 × 844:
+
+- Flat, gable, and hip roofs render, and the cut slider reaches the ridge. Windows and doors show as sill, opening, and lintel.
+- Placing the fire and the person by clicking the floor, with Esc to cancel and a message for clicks outside the building.
+- Fire in the kitchen, person in Bedroom 1: 7.0 m through both doors, staying 3.9 m or more from the fire.
+- Dragging the fire to the outside door switches the route to a window and marks the door as cut off.
+- Leaving and returning to the mode keeps the plan. There's no horizontal scroll on the narrow screen.
+
+The AI explanation ran through the real frontend and backend route against a stubbed model. It has not run against the live Claude API, because no API key was available (Task 11).
+
+## Multi-floor and the redesign
+
+`npm test` passes 65 frontend tests and `npm test` in `backend/` passes 15. Lint and the production build are clean. Headless Chrome checks at 1440 × 900 and 390 × 844, on both saved samples:
+
+- The landing page shows the two-floor house rising, then both samples open from it.
+- Floors stack, the roof sits on the top floor, and the floor picker isolates a floor and limits the slider to it.
+- See floor plan, Undo cut, side cuts, and drawing an area all work with the roof in place.
+- Clicking the floor starts a walk, Start in the middle works on both floors, W moves forward, and Esc returns to Explore.
+- Escape routes run on the ground floor and say that upper floors need stairs.
+- There's no horizontal scroll on the narrow screen, and no text under 12 px.
+
+The touch-only wording and on-screen arrows weren't exercised with real touch input. The only console message is a `THREE.Clock` deprecation warning from the pinned three.js version.
+
+Two floor images were also uploaded through the real frontend and backend route against a stubbed model. Neither that path nor the AI explanation has run against the live Claude API (Task 11).

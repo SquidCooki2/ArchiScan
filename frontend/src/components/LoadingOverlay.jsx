@@ -1,25 +1,39 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useReducedMotion } from '../lib/useReducedMotion'
 import Icon from './Icon'
+import { Button } from './ui'
 
-const messages = ['Reading floorplan…', 'Tracing walls and openings…', 'Building your space…', 'Adding another dimension…']
+const MESSAGES = ['Reading your floor plan…', 'Finding walls, doors, and windows…', 'Building the model…']
 
-export default function LoadingOverlay({ previewUrl, onCancel, sample }) {
+/** A scan line passes over the drawing while it's read; the wait is the product working. */
+export default function LoadingOverlay({ previewUrl, floors = 1, sample, onCancel }) {
   const [step, setStep] = useState(0)
-  useEffect(() => { const interval = setInterval(() => setStep(value => (value + 1) % messages.length), 5000); return () => clearInterval(interval) }, [])
+  const line = useRef(null)
+  const reducedMotion = useReducedMotion()
+  useEffect(() => {
+    const interval = setInterval(() => setStep(value => Math.min(value + 1, MESSAGES.length - 1)), 5000)
+    return () => clearInterval(interval)
+  }, [])
   useEffect(() => {
     const onKeyDown = event => { if (event.key === 'Escape') onCancel() }
     window.addEventListener('keydown', onKeyDown)
     return () => window.removeEventListener('keydown', onKeyDown)
   }, [onCancel])
-  return <div className="fixed inset-0 z-40 grid place-items-center bg-black/50 p-6 backdrop-blur-md" role="dialog" aria-modal="true" aria-labelledby="loading-title" aria-busy="true">
-    <div className="w-full max-w-sm rounded-3xl border border-white/10 bg-neutral-900/90 p-8 text-center shadow-2xl">
-      <div className="relative mx-auto mb-6 grid size-24 place-items-center overflow-hidden rounded-2xl border border-white/10 bg-white/5">
-        {previewUrl ? <img src={previewUrl} alt="Floorplan being processed" className="size-full object-contain p-2 opacity-60" /> : <Icon name="cube" className="size-9 text-indigo-300" />}
-        <div className="absolute inset-0 border-t-2 border-indigo-300 motion-safe:animate-spin" />
+  useEffect(() => {
+    if (reducedMotion || !line.current) return
+    const animation = line.current.animate([{ transform: 'translateY(0)' }, { transform: 'translateY(9.5rem)' }], { duration: 1800, iterations: Infinity, direction: 'alternate', easing: 'ease-in-out' })
+    return () => animation.cancel()
+  }, [reducedMotion])
+  const title = sample ? 'Opening the sample…' : floors > 1 && step === 0 ? `Reading ${floors} floor plans…` : MESSAGES[step]
+  return <div className="fixed inset-0 z-40 grid place-items-center bg-[#171c22]/75 p-6" role="dialog" aria-modal="true" aria-labelledby="loading-title" aria-busy="true">
+    <div className="w-full max-w-sm rounded-xl border border-white/10 bg-[#20262e] p-6 shadow-[0_16px_48px_rgb(0_0_0/0.4)]">
+      <div className="relative h-40 overflow-hidden rounded-lg bg-white/95">
+        {previewUrl ? <img src={previewUrl} alt="The floor plan being read" className="size-full object-contain p-2" /> : <div className="grid size-full place-items-center text-[#171c22]/40"><Icon name="cube" className="size-10" /></div>}
+        <div ref={line} className="absolute inset-x-0 top-0 h-0.5 bg-sky-500 shadow-[0_0_12px_2px_rgb(14_165_233/0.6)]" />
       </div>
-      <h2 id="loading-title" className="text-xl font-light tracking-tight" role="status">{sample ? 'Opening sample space…' : messages[step]}</h2>
-      <p className="mt-3 text-xs leading-5 text-white/40">{sample ? 'Loading the saved apartment model.' : 'A little detail takes a little time. Complex plans may take up to 150 seconds.'}</p>
-      <button autoFocus type="button" onClick={onCancel} className="mt-6 rounded-lg px-4 py-2 text-xs text-white/60 transition-colors hover:bg-white/5 hover:text-white focus-visible:outline-2 focus-visible:outline-indigo-400">Cancel</button>
+      <h2 id="loading-title" role="status" className="mt-5 text-lg font-medium tracking-tight text-slate-100">{title}</h2>
+      {!sample && <p className="mt-1 text-sm leading-6 text-slate-300">Detailed plans can take up to two minutes.</p>}
+      <Button autoFocus className="mt-4 w-full" onClick={onCancel}>Cancel</Button>
     </div>
   </div>
 }

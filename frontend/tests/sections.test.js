@@ -103,8 +103,8 @@ test('vertical caps through diagonal and area-partitioned walls stay inside thei
   }
 })
 
-test('a new model requires a user-drawn area instead of defaulting to a global cut', () => {
-  assert.deepEqual(createSection(), { enabled: false, axis: 'y', position: WALL_HEIGHT, flipped: false, scope: 'area' })
+test('a new model starts uncut, ready to cut the whole model', () => {
+  assert.deepEqual(createSection(), { enabled: false, axis: 'y', position: WALL_HEIGHT, flipped: false, scope: 'all' })
 })
 
 test('3D corner drawing works in either direction and stays inside the model', async () => {

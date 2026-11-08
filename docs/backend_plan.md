@@ -158,3 +158,9 @@ The user text prompt is short: "Parse this floorplan into walls, windows, and do
     *   [ ] Task 4: Craft and test the Claude Vision prompt (section 7) for optimal JSON extraction; implement `extractJson` and `validateWalls` with unit tests and the single retry.
     *   [ ] Task 5: Implement the full error table and error middleware (section 5), plus route tests with a mocked claude service.
     *   [ ] Task 6: End-to-end check with real floorplans together with the frontend; tune prompt and scale handling.
+
+## Evacuation brief (`POST /api/evacuation-brief`)
+Puts a route the frontend has already computed into plain words. The route is never decided here. See the contract in `project_level_plan.md` section 5a.
+*   `routes/evacuationBrief.js` validates the facts (at most 20 KB) and the optional image (same rules and size limit as `/api/parse-blueprint`), and keeps `roomNames` only for rooms that were in the request.
+*   `services/claude.js` `writeEvacuationBrief(facts, image)` uses `ANTHROPIC_MODEL`, the system prompt in `prompts/evacuationPrompt.js`, and a JSON schema through `output_config.format`. Any stop reason other than `end_turn` becomes `MODEL_OUTPUT_INVALID` (502).
+*   Errors use the same format and codes as `/api/parse-blueprint`.

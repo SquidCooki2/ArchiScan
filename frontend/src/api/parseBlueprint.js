@@ -1,4 +1,4 @@
-import { backendSample } from '../samples/backendSample'
+import { SAMPLES } from '../samples/backendSample'
 import { validateWalls } from '../lib/geometry'
 
 export const ACCEPTED_TYPES = ['image/png', 'image/jpeg', 'image/webp', 'image/gif']
@@ -6,9 +6,9 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 export const isMockMode = () => new URLSearchParams(window.location.search).get('mock') === '1' || !import.meta.env.VITE_API_URL?.trim()
 
 export function validateFile(file) {
-  if (!file || !ACCEPTED_TYPES.includes(file.type)) throw new Error('Choose a PNG, JPEG, WebP, or GIF image.')
-  if (file.size > MAX_IMAGE_BYTES) throw new Error('This image is too large. Please choose a file of 5 MB or less.')
-  if (!file.size) throw new Error('This image is empty. Please choose another file.')
+  if (!file || !ACCEPTED_TYPES.includes(file.type)) throw new Error('Choose a PNG, JPG, WebP, or GIF image.')
+  if (file.size > MAX_IMAGE_BYTES) throw new Error(`${file.name} is over 5 MB. Choose a smaller image.`)
+  if (!file.size) throw new Error(`${file.name} is empty. Choose another image.`)
 }
 
 export function fileToBase64(file, signal) {
@@ -24,18 +24,19 @@ export function fileToBase64(file, signal) {
   })
 }
 
-export function loadSample(signal) {
-  const sampleWalls = validateWalls(backendSample.walls)
+export function loadSample(signal, id = 'apartment') {
+  const sampleWalls = validateWalls(SAMPLES[id].walls)
   return new Promise((resolve, reject) => {
     const abort = () => { clearTimeout(timer); reject(new DOMException('Cancelled', 'AbortError')) }
-    const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(sampleWalls.map(w => ({ ...w }))) }, 1500)
+    const timer = setTimeout(() => { signal?.removeEventListener('abort', abort); resolve(sampleWalls.map(w => ({ ...w }))) }, 700)
     if (signal?.aborted) return abort()
     signal?.addEventListener('abort', abort, { once: true })
   })
 }
 
-export async function parseBlueprint(file, { signal } = {}) {
-  validateFile(file)
+/** One image per floor, ground floor first. */
+export async function parseBlueprint(files, { signal } = {}) {
+  files.forEach(validateFile)
   if (isMockMode()) return loadSample(signal)
   const controller = new AbortController()
   let timedOut = false
@@ -44,12 +45,13 @@ export async function parseBlueprint(file, { signal } = {}) {
   signal?.addEventListener('abort', abort, { once: true })
   const timeout = setTimeout(() => { timedOut = true; controller.abort() }, 150_000)
   try {
-    const { base64, mediaType } = await fileToBase64(file, controller.signal)
+    const images = await Promise.all(files.map(file => fileToBase64(file, controller.signal)))
+    const payload = images.map(({ base64, mediaType }) => ({ image: base64, mediaType }))
     let response
     try {
       response = await fetch(`${import.meta.env.VITE_API_URL.trim().replace(/\/+$/, '')}/api/parse-blueprint`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ image: base64, mediaType }), signal: controller.signal,
+        body: JSON.stringify(payload.length === 1 ? payload[0] : { images: payload }), signal: controller.signal,
       })
     } catch (error) {
       if (controller.signal.aborted) throw error
