@@ -65,9 +65,13 @@ Returns `200 { "status": "ok" }`. Used for smoke tests and for the frontend to v
 *   `image`: required string. If it begins with `data:`, strip the prefix and derive `mediaType` from it (be lenient).
 *   `mediaType`: one of `image/png`, `image/jpeg`, `image/webp`, `image/gif`. Default `image/png` if omitted and not derivable.
 
-**Success `200`:** a bare JSON array of walls (units in **meters**, see Coordinate Convention):
+**Success `200`:** a bare JSON array of architectural elements (`"wall"`, `"window"`, `"door"`, units in **meters**, see Coordinate Convention):
 ```json
-[{ "x": 2.5, "z": 0.1, "width": 5.0, "depth": 0.2, "rotation": 0 }]
+[
+  { "type": "wall", "x": 0.95, "z": 0.12, "width": 1.9, "depth": 0.24, "rotation": 0 },
+  { "type": "window", "x": 2.9, "z": 0.12, "width": 2.0, "depth": 0.24, "rotation": 0, "sillHeight": 0.9, "height": 1.2 },
+  { "type": "door", "x": 6.0, "z": 0.12, "width": 0.9, "depth": 0.24, "rotation": 0, "sillHeight": 0, "height": 2.1 }
+]
 ```
 **Error responses** always use the shape `{ "error": { "code": "<MACHINE_CODE>", "message": "<human text>" } }`:
 
@@ -88,8 +92,11 @@ Returns `200 { "status": "ok" }`. Used for smoke tests and for the frontend to v
 *   Each wall is described by its **center point** `(x, z)`, plus `width` (extent along its local X axis, i.e. its length), `depth` (thickness, extent along local Z), and `rotation`.
 *   `rotation` is in **radians** around the Y axis, applied to the box after placing it at its center. `0` = wall runs along X (horizontal in the image); `Math.PI / 2` = runs along Z (vertical in the image). Allowed range `[0, π)`. (Frontend applies it as `rotation-y={-rotation}` if needed so the image's clockwise matches the 3D view; verify visually with a known L-shaped plan and fix on the frontend side only.)
 *   **Scale:** if the plan shows dimensions or a scale bar, use them. Otherwise assume a typical interior wall thickness of 0.15–0.25 m, an overall plan that fits a plausible house size, and scale everything consistently.
-*   Wall height is **not** part of the payload; the frontend uses a constant (2.7 m).
-*   Doors and windows: treated as gaps. Split walls so openings are empty rather than emitting wall boxes across doorways.
+*   Full wall height is **not** part of the payload; the frontend uses a constant (`WALL_HEIGHT = 2.7` m).
+*   **Element types (`type`):**
+    *   `"wall"`: solid full-height wall segment. If `type` is omitted, `validateWalls` defaults it to `"wall"`.
+    *   `"window"`: placed in the opening between wall segments, matching the host wall's `depth` and `rotation`. Includes `sillHeight` (default `0.9` m) and `height` (default `1.2` m).
+    *   `"door"`: placed in the doorway opening between wall segments, matching the host wall's `depth` and `rotation`. Includes `sillHeight` (default `0` m) and `height` (default `2.1` m).
 
 ## 7. Claude Integration (`services/claude.js`)
 *   Instantiate once: `new Anthropic({ apiKey: config.anthropicApiKey, timeout: 120000, maxRetries: 2 })`.
@@ -103,16 +110,16 @@ The system prompt must, in order:
 1. Define the role: "You are an architectural floorplan parser."
 2. State the coordinate convention from section 6 verbatim, including units, origin, rotation, and the door/window gap rule.
 3. State the output rule: "Respond with ONLY a JSON array. No prose, no markdown fences, no comments."
-4. Give the exact schema: `[{"x":number,"z":number,"width":number,"depth":number,"rotation":number}]`, all numbers finite.
-5. Include one worked example for a simple 4x3 m rectangular room (4 walls) so the model sees the convention applied.
+4. Give the exact schema for `"wall"`, `"window"`, and `"door"` objects (including `sillHeight` and `height` for windows and doors), all numbers finite.
+5. Include one worked example for a simple 4x3 m rectangular room with a window and a door so the model sees the convention applied.
 6. Say: "If the image is not a floorplan, respond with `[]`."
-7. Ask it to merge collinear wall segments and omit furniture, labels, dimensions text, and hatching.
+7. Ask it to merge collinear wall segments of the same type and omit furniture, labels, dimensions text, and hatching.
 
-The user text prompt is short: "Parse this floorplan into walls using the specified JSON format."
+The user text prompt is short: "Parse this floorplan into walls, windows, and doors using the specified JSON format."
 
 ## 8. Output Parsing & Validation
 *   `extractJson(text)`: try `JSON.parse(text.trim())`; on failure strip ```` ``` ```` fences; on failure take the substring from the first `[` to the last `]`. Throw if none parse to an array.
-*   `validateWalls(arr)`: every element must be an object with finite numbers for all five keys; `width > 0`, `depth > 0`; coerce numeric strings; drop unknown keys; round to 3 decimals; normalize `rotation` into `[0, π)`. Reject (throw) if more than 20% of items are invalid, otherwise drop the invalid ones. Cap at 500 walls.
+*   `validateWalls(arr)`: every element must be an object with `type` in `{"wall", "window", "door"}` (defaulting to `"wall"` if omitted) and finite numbers for `x, z, width, depth, rotation`; `width > 0`, `depth > 0`; for `"window"` and `"door"`, validate/default `sillHeight` (`>= 0`, `< 2.7`) and `height` (`> 0`, clamped so `sillHeight + height <= 2.7`); coerce numeric strings; drop unknown keys; round to 3 decimals; normalize `rotation` into `[0, π)`. Reject (throw) if more than 20% of items are invalid, otherwise drop the invalid ones. Cap at 500 elements.
 *   If extraction or validation fails, **retry the Claude call once**, appending a follow-up user turn "Your previous output was not valid JSON per the schema. Output only the JSON array." Then fail with `MODEL_OUTPUT_INVALID`.
 *   Empty array after validation maps to `NO_WALLS_FOUND`.
 

@@ -66,7 +66,10 @@ Flow:
 *   While the backend is not built, `?mock=1` in the URL (or a missing `VITE_API_URL`) loads `samples/sampleWalls.json` after a 1.5 s artificial delay.
 
 ## 7. Data Contract & Coordinates (must match `docs/backend_plan.md` section 6)
-Wall: `{ x, z, width, depth, rotation }` in **meters**; `(x, z)` is the wall's **center**; `width` is length along local X; `depth` is thickness along local Z; `rotation` is radians around Y. Origin is the top-left of the plan, +X right, +Z down the image. 
+Each element in the array has `{ type, x, z, width, depth, rotation, sillHeight?, height? }` in **meters**:
+*   `type`: `"wall" | "window" | "door"` (treat missing `type` as `"wall"`).
+*   `(x, z)` is the element's **center**; `width` is length along local X; `depth` is thickness along local Z; `rotation` is radians around Y. Origin is the top-left of the plan, +X right, +Z down the image.
+*   `sillHeight` and `height`: vertical placement and height in meters for `"window"` (default `0.9` and `1.2`) and `"door"` (default `0` and `2.1`). Full wall height is `WALL_HEIGHT = 2.7`. 
 
 ## 8. 3D Viewer
 ### Canvas & camera
@@ -78,20 +81,24 @@ Wall: `{ x, z, width, depth, rotation }` in **meters**; `(x, z)` is the wall's *
 ### Controls
 Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05} />` (prevents going below the floor). After walls load, fit the camera: compute bounds, then set the controls target to the model center and position the camera at about `maxDim * 1.5` away. Use Drei `<Bounds fit clip observe>` as a simple alternative.
 
-### Walls (`Walls.jsx`)
+### Walls, Windows & Doors (`Walls.jsx`)
 *   Constants in `lib/geometry.js`: `WALL_HEIGHT = 2.7`.
-*   `computeBounds(walls)` returns `{ minX, maxX, minZ, maxZ, cx, cz, size }` using wall centers ± `width/2` (rough extent is fine).
+*   `computeBounds(elements)` returns `{ minX, maxX, minZ, maxZ, cx, cz, size }` using element centers ± `width/2` (rough extent is fine).
 *   Render `<group position={[-cx, 0, -cz]}>` so the model is centered at the world origin.
-*   For each wall:
-```jsx
-<mesh castShadow receiveShadow
-      position={[w.x, WALL_HEIGHT / 2, w.z]}
-      rotation={[0, -w.rotation, 0]}>
-  <boxGeometry args={[w.width, WALL_HEIGHT, w.depth]} />
-  <meshStandardMaterial color="#e8e6e1" roughness={0.85} metalness={0} clippingPlanes={[plane]} clipShadows side={THREE.DoubleSide} />
-</mesh>
-```
-*   Share one material instance across all walls (`useMemo`) so the clipping plane is set in one place. The `-w.rotation` sign accounts for three.js's right-handed Y rotation vs. the image's Z-down orientation; confirm with the sample L-shaped plan and flip the sign here if it mirrors.
+*   Create shared materials (`useMemo`) that all reference `clippingPlanes={[plane]}` and `clipShadows`:
+    *   `wallMaterial`: `meshStandardMaterial({ color: '#e8e6e1', roughness: 0.85, metalness: 0, side: THREE.DoubleSide })`
+    *   `windowMaterial`: `meshStandardMaterial({ color: '#93c5fd', transparent: true, opacity: 0.35, roughness: 0.1, metalness: 0.1, side: THREE.DoubleSide })`
+    *   `doorMaterial`: `meshStandardMaterial({ color: '#8b5a2b', roughness: 0.65, metalness: 0.05, side: THREE.DoubleSide })`
+*   For each element `w` (defaulting `w.type ?? 'wall'`):
+    *   **`"wall"`**: a single full-height box at `[w.x, WALL_HEIGHT / 2, w.z]` with size `[w.width, WALL_HEIGHT, w.depth]` and `wallMaterial`.
+    *   **`"window"`** (`sill = w.sillHeight ?? 0.9`, `h = w.height ?? 1.2`, `topH = Math.max(0, WALL_HEIGHT - (sill + h))`):
+        *   Sill wall (if `sill > 0`): box `[w.width, sill, w.depth]` at `y = sill / 2` using `wallMaterial`.
+        *   Header/lintel wall (if `topH > 0`): box `[w.width, topH, w.depth]` at `y = sill + h + topH / 2` using `wallMaterial`.
+        *   Glass pane: box `[w.width, h, Math.min(w.depth * 0.25, 0.04)]` at `y = sill + h / 2` using `windowMaterial`.
+    *   **`"door"`** (`sill = w.sillHeight ?? 0`, `h = w.height ?? 2.1`, `topH = Math.max(0, WALL_HEIGHT - (sill + h))`):
+        *   Header/lintel wall (if `topH > 0`): box `[w.width, topH, w.depth]` at `y = sill + h + topH / 2` using `wallMaterial`.
+        *   Door panel: box `[w.width, h, Math.min(w.depth * 0.4, 0.06)]` at `y = sill + h / 2` using `doorMaterial`.
+*   Apply `rotation={[0, -w.rotation, 0]}` on each element's `<group position={[w.x, 0, w.z]} rotation={[0, -w.rotation, 0]}>` so child meshes only need local `[0, y, 0]` positions.
 *   Use `key={index}`.
 
 ### Floor (`Floor.jsx`)

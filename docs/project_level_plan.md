@@ -54,7 +54,7 @@ To initialize the workspace for all contributors, run the following commands in 
 To ensure seamless operation between the two layers:
 *   **CORS:** The backend must be configured with a CORS policy that explicitly allows requests from the frontend's local development port (usually `http://localhost:5173`).
 *   **API Contract:** The frontend will send a `POST` request to `/api/parse-blueprint` containing a Base64 string of the uploaded image.
-*   **Data Format:** The backend must return a strict JSON array of objects representing walls: `[{ "x": float, "z": float, "width": float, "depth": float, "rotation": float }]`.
+*   **Data Format:** The backend must return a strict JSON array of objects representing walls, windows, and doors: `[{ "type": "wall" | "window" | "door", "x": float, "z": float, "width": float, "depth": float, "rotation": float, "sillHeight"?: float, "height"?: float }]`.
 *   **Environment Variables:** The frontend will use `VITE_API_URL=http://localhost:3000` to locate the backend. The backend will use `ANTHROPIC_API_KEY` to securely communicate with Claude.
 
 ## 5. Authoritative Contract (single source of truth)
@@ -64,11 +64,20 @@ Detailed plans: [frontend_plan.md](frontend_plan.md) and [backend_plan.md](backe
 ```json
 { "image": "<raw base64, no data: prefix>", "mediaType": "image/png" }
 ```
-**Success (200):** `[{ "x": 2.5, "z": 0.1, "width": 5.0, "depth": 0.2, "rotation": 0 }]`
+**Success (200):**
+```json
+[
+  { "type": "wall", "x": 0.95, "z": 0.12, "width": 1.9, "depth": 0.24, "rotation": 0 },
+  { "type": "window", "x": 2.9, "z": 0.12, "width": 2.0, "depth": 0.24, "rotation": 0, "sillHeight": 0.9, "height": 1.2 },
+  { "type": "door", "x": 6.0, "z": 0.12, "width": 0.9, "depth": 0.24, "rotation": 0, "sillHeight": 0, "height": 2.1 }
+]
+```
+*   `type`: `"wall" | "window" | "door"` (defaults to `"wall"` if omitted for backwards compatibility).
+*   `sillHeight` and `height` (meters): included on `"window"` (default `0.9` / `1.2`) and `"door"` (default `0` / `2.1`). Full wall height is a frontend constant of `2.7` m.
 
 **Error:** `{ "error": { "code": "INVALID_REQUEST", "message": "..." } }` with status 400/413/422/429/502/504/500 (full table in `backend_plan.md` section 5). The frontend displays `error.message`.
 
-**Coordinates:** meters; top-down; origin at top-left of the plan's outer extent; +X = image right; +Z = image down; `(x, z)` = wall center; `width` = length along local X, `depth` = thickness; `rotation` = radians about Y in `[0, PI)` (0 = runs along X). Wall height is a frontend constant of 2.7 m. Doors/windows are gaps in the walls.
+**Coordinates:** meters; top-down; origin at top-left of the plan's outer extent; +X = image right; +Z = image down; `(x, z)` = element center; `width` = length along local X, `depth` = thickness; `rotation` = radians about Y in `[0, PI)` (0 = runs along X). Walls are split around openings, and `"window"` / `"door"` elements are placed in those openings with matching `depth` and `rotation`.
 
 **Limits:** images up to 5 MB (png/jpeg/webp/gif); request body up to 50 MB; frontend timeout 150 s.
 
