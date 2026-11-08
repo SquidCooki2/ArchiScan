@@ -27,14 +27,15 @@ The KayKit Furniture Bits `.gltf` + `.bin` + `furniturebits_texture.png` assets 
 - `"chair"` → `chair_A.gltf` / `chair_A_wood.gltf` / `chair_B.gltf` / `armchair.gltf` (native size `0.75 × 1.26 × 0.85`)
 - `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf` (native size `3.1 × 1.0 × 3.0` double)
 - `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf` (native size `2.0 × 1.0 × 1.0`)
-- `"wardrobe"` → `shelf_A_big.gltf` / `cabinet_medium.gltf` (native size `2.0 × 2.0 × 0.75`)
+- `"wardrobe"` → `cabinet_medium.gltf` stretched to 2 m tall (`shelf_A_big.gltf` is really a `2.0 × 0.4 × 0.5` wall shelf)
 - `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf` (native size `2.0 × 1.0 × 2.0`)
-- `"fridge"`, `"sink"`, `"toilet"`, `"bath"` → Not included as dedicated meshes in the KayKit pack; rendered using procedural Three.js geometry (or fallback cabinet/shelf GLTFs) in the same architectural palette.
+- `"fridge"`, `"sink"`, `"toilet"`, `"bath"` → Not included as dedicated meshes in the KayKit pack; built from merged Three.js boxes and cylinders in `viewer/fixtureGeometry.js`, in the same palette.
 
 ### Sizing & Scale Normalization (Important)
 - **Raw GLTF dimensions are oversized relative to meter-scale rooms:** The `.gltf` files in `public/assets/furniture/` are authored in stylized game units roughly **1.4× to 1.6× larger than real-world meters** (for example, `bed_double_A.gltf` is `3.1 × 3.0` units and `couch.gltf` is `3.0 × 1.6` units, whereas rooms and `WALL_HEIGHT = 2.7` m are in true meters).
 - If rendered at `scale = 1`, furniture will appear too large and clip into walls or block doorways.
-- The frontend renderer must normalize each model's scale (either by applying a uniform `~0.6`–`0.65` scale factor or normalizing the cloned GLTF scene's `THREE.Box3` bounding box to a per-type target height/width in meters) and ensure the bottom of the bounding box sits flush on `y = floor * 2.7`.
+- `lib/furniture.js` gives each type a real-world box in meters. `viewer/Furniture.jsx` fits the model's geometry to that box along each axis, centered in plan with its base flush on `y = floor * 2.7`.
+- All furniture is drawn in one basswood tone instead of the pack's texture, like the pieces in an architect's model.
 
 ## Validation and defaults
 
@@ -48,4 +49,4 @@ The KayKit Furniture Bits `.gltf` + `.bin` + `furniturebits_texture.png` assets 
 
 ## Selection and sections
 
-Area selection and section planes clip structural parts, procedurally generated stairs, and cloned furniture GLTF materials alike. Each part carries its real bottom and top elevation so horizontal and vertical cuts behave consistently across multi-story models.
+Area selection and section planes clip structural parts, procedurally generated stairs, and furniture materials alike. Each part carries its real bottom and top elevation so horizontal and vertical cuts behave consistently across multi-story models.
