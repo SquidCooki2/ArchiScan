@@ -49,6 +49,16 @@ test('validateWalls: furniture types omit width/depth, support aliases, and pres
   ]);
 });
 
+test('validateWalls: stairs requires width/depth, normalizes aliases, and preserves [0, 2*PI) rotation', () => {
+  const out = validateWalls([
+    { type: 'staircase', x: 11.45, z: 5.8, width: 3.4, depth: 1.1, rotation: Math.PI },
+  ], 0);
+  assert.deepEqual(out, [
+    { type: 'stairs', floor: 0, x: 11.45, z: 5.8, width: 3.4, depth: 1.1, rotation: 3.142 },
+  ]);
+  assert.throws(() => validateWalls([{ type: 'stairs', x: 1, z: 2, rotation: 0 }]));
+});
+
 test('validateWalls: drops few invalid, rejects many invalid', () => {
   const good = Array.from({ length: 9 }, () => WALL);
   assert.equal(validateWalls([...good, { x: 'a' }]).length, 9);

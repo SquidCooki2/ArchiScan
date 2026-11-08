@@ -1,6 +1,6 @@
 const { ModelOutputError } = require('./errors');
 
-const STRUCTURAL_TYPES = new Set(['wall', 'window', 'door']);
+const STRUCTURAL_TYPES = new Set(['wall', 'window', 'door', 'stairs']);
 const FURNITURE_TYPES = new Set([
   'couch',
   'chair',
@@ -14,6 +14,9 @@ const FURNITURE_TYPES = new Set([
   'bath',
 ]);
 const TYPE_ALIASES = {
+  stair: 'stairs',
+  staircase: 'stairs',
+  stairway: 'stairs',
   sofa: 'couch',
   armchair: 'chair',
   stool: 'chair',
@@ -84,6 +87,7 @@ function normalizeWall(item, defaultFloor = 0) {
   const depth = toNumber(item.depth);
   if (!Number.isFinite(width) || !Number.isFinite(depth) || width <= 0 || depth <= 0) return null;
 
+  const rotPeriod = rawType === 'stairs' ? 2 * Math.PI : Math.PI;
   const wall = {
     type: rawType,
     floor: rawFloor,
@@ -91,7 +95,7 @@ function normalizeWall(item, defaultFloor = 0) {
     z: round3(z),
     width: round3(width),
     depth: round3(depth),
-    rotation: round3(normalizeRotation(rotation, Math.PI)),
+    rotation: round3(normalizeRotation(rotation, rotPeriod)),
   };
 
   if (rawType === 'window' || rawType === 'door') {
