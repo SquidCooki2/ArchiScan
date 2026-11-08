@@ -2,19 +2,19 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 0.846,
-    "z": 0.108,
-    "width": 1.692,
-    "depth": 0.22,
+    "x": 0.76,
+    "z": 0.11,
+    "width": 1.52,
+    "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "window",
     "floor": 0,
-    "x": 2.745,
-    "z": 0.108,
-    "width": 2.106,
-    "depth": 0.22,
+    "x": 2.45,
+    "z": 0.11,
+    "width": 1.86,
+    "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0.9,
     "height": 1.2
@@ -22,19 +22,19 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 4.329,
-    "z": 0.108,
-    "width": 1.062,
-    "depth": 0.22,
+    "x": 3.89,
+    "z": 0.11,
+    "width": 1.02,
+    "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "door",
     "floor": 0,
-    "x": 5.337,
-    "z": 0.108,
-    "width": 0.954,
-    "depth": 0.22,
+    "x": 4.785,
+    "z": 0.11,
+    "width": 0.77,
+    "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0,
     "height": 2.1
@@ -42,19 +42,19 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 6.651,
-    "z": 0.108,
-    "width": 1.674,
-    "depth": 0.22,
+    "x": 5.92,
+    "z": 0.11,
+    "width": 1.5,
+    "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "window",
     "floor": 0,
-    "x": 8.541,
-    "z": 0.108,
-    "width": 2.106,
-    "depth": 0.22,
+    "x": 7.59,
+    "z": 0.11,
+    "width": 1.84,
+    "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0.9,
     "height": 1.2
@@ -62,28 +62,28 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 10.179,
-    "z": 0.108,
-    "width": 1.17,
-    "depth": 0.22,
+    "x": 9.04,
+    "z": 0.11,
+    "width": 1.06,
+    "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "wall",
     "floor": 0,
-    "x": 0.846,
-    "z": 8.55,
-    "width": 1.692,
-    "depth": 0.22,
+    "x": 0.76,
+    "z": 7.62,
+    "width": 1.52,
+    "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "window",
     "floor": 0,
-    "x": 2.475,
-    "z": 8.55,
-    "width": 1.566,
-    "depth": 0.22,
+    "x": 2.21,
+    "z": 7.62,
+    "width": 1.38,
+    "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0.9,
     "height": 1.2
@@ -91,19 +91,19 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 4.365,
-    "z": 8.55,
-    "width": 2.214,
-    "depth": 0.22,
+    "x": 3.89,
+    "z": 7.62,
+    "width": 1.98,
+    "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "window",
     "floor": 0,
-    "x": 6.003,
-    "z": 8.55,
-    "width": 1.062,
-    "depth": 0.22,
+    "x": 5.335,
+    "z": 7.62,
+    "width": 0.91,
+    "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0.9,
     "height": 1.2
@@ -111,19 +111,19 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 7.425,
-    "z": 8.55,
-    "width": 1.782,
-    "depth": 0.22,
+    "x": 6.6,
+    "z": 7.62,
+    "width": 1.62,
+    "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "window",
     "floor": 0,
-    "x": 9.108,
-    "z": 8.55,
-    "width": 1.584,
-    "depth": 0.22,
+    "x": 8.105,
+    "z": 7.62,
+    "width": 1.39,
+    "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0.9,
     "height": 1.2
@@ -131,28 +131,28 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 10.332,
-    "z": 8.55,
-    "width": 0.864,
-    "depth": 0.22,
+    "x": 9.185,
+    "z": 7.62,
+    "width": 0.77,
+    "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "wall",
     "floor": 0,
-    "x": 0.108,
-    "z": 0.585,
-    "width": 1.17,
-    "depth": 0.22,
+    "x": 0.1,
+    "z": 0.53,
+    "width": 1.06,
+    "depth": 0.2,
     "rotation": 1.571
   },
   {
     "type": "window",
     "floor": 0,
-    "x": 0.108,
-    "z": 1.971,
-    "width": 1.602,
-    "depth": 0.22,
+    "x": 0.1,
+    "z": 1.76,
+    "width": 1.4,
+    "depth": 0.2,
     "rotation": 1.571,
     "sillHeight": 0.9,
     "height": 1.2
@@ -160,36 +160,36 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 0.108,
-    "z": 5.715,
-    "width": 5.886,
-    "depth": 0.22,
+    "x": 0.1,
+    "z": 5.085,
+    "width": 5.25,
+    "depth": 0.2,
     "rotation": 1.571
   },
   {
     "type": "wall",
     "floor": 0,
-    "x": 10.656,
-    "z": 4.329,
-    "width": 8.658,
-    "depth": 0.22,
+    "x": 9.47,
+    "z": 3.855,
+    "width": 7.71,
+    "depth": 0.2,
     "rotation": 1.571
   },
   {
     "type": "wall",
     "floor": 0,
-    "x": 1.793,
-    "z": 3.816,
-    "width": 3.146,
+    "x": 1.495,
+    "z": 3.41,
+    "width": 2.99,
     "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "door",
     "floor": 0,
-    "x": 3.744,
-    "z": 3.816,
-    "width": 0.756,
+    "x": 3.325,
+    "z": 3.41,
+    "width": 0.67,
     "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0,
@@ -198,18 +198,18 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 4.797,
-    "z": 3.816,
-    "width": 1.35,
+    "x": 4.255,
+    "z": 3.41,
+    "width": 1.19,
     "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "door",
     "floor": 0,
-    "x": 5.841,
-    "z": 3.816,
-    "width": 0.738,
+    "x": 5.195,
+    "z": 3.41,
+    "width": 0.69,
     "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0,
@@ -218,18 +218,18 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 7.425,
-    "z": 3.816,
-    "width": 2.43,
+    "x": 6.61,
+    "z": 3.41,
+    "width": 2.14,
     "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "door",
     "floor": 0,
-    "x": 9.009,
-    "z": 3.816,
-    "width": 0.738,
+    "x": 8.015,
+    "z": 3.41,
+    "width": 0.67,
     "depth": 0.2,
     "rotation": 0,
     "sillHeight": 0,
@@ -238,28 +238,189 @@
   {
     "type": "wall",
     "floor": 0,
-    "x": 9.962,
-    "z": 3.816,
-    "width": 1.167,
+    "x": 8.96,
+    "z": 3.41,
+    "width": 1.22,
     "depth": 0.2,
     "rotation": 0
   },
   {
     "type": "wall",
     "floor": 0,
-    "x": 4.842,
-    "z": 6.178,
-    "width": 4.524,
+    "x": 4.3,
+    "z": 5.515,
+    "width": 4.21,
     "depth": 0.2,
     "rotation": 1.571
   },
   {
     "type": "wall",
     "floor": 0,
-    "x": 7.488,
-    "z": 6.178,
-    "width": 4.524,
+    "x": 6.66,
+    "z": 5.515,
+    "width": 4.21,
     "depth": 0.2,
     "rotation": 1.571
+  },
+  {
+    "type": "couch",
+    "floor": 0,
+    "x": 1.78,
+    "z": 2.85,
+    "rotation": 3.142
+  },
+  {
+    "type": "table",
+    "floor": 0,
+    "x": 1.78,
+    "z": 1.71,
+    "rotation": 0
+  },
+  {
+    "type": "chair",
+    "floor": 0,
+    "x": 3.26,
+    "z": 1.62,
+    "rotation": 4.712
+  },
+  {
+    "type": "table",
+    "floor": 0,
+    "x": 6.83,
+    "z": 1.73,
+    "rotation": 0
+  },
+  {
+    "type": "chair",
+    "floor": 0,
+    "x": 6.45,
+    "z": 1.02,
+    "rotation": 0
+  },
+  {
+    "type": "chair",
+    "floor": 0,
+    "x": 7.22,
+    "z": 1.02,
+    "rotation": 0
+  },
+  {
+    "type": "chair",
+    "floor": 0,
+    "x": 6.45,
+    "z": 2.42,
+    "rotation": 3.142
+  },
+  {
+    "type": "chair",
+    "floor": 0,
+    "x": 7.22,
+    "z": 2.42,
+    "rotation": 3.142
+  },
+  {
+    "type": "cabinet",
+    "floor": 0,
+    "x": 9.07,
+    "z": 2.08,
+    "rotation": 4.712
+  },
+  {
+    "type": "sink",
+    "floor": 0,
+    "x": 9.07,
+    "z": 1.54,
+    "rotation": 4.712
+  },
+  {
+    "type": "fridge",
+    "floor": 0,
+    "x": 8.96,
+    "z": 0.56,
+    "rotation": 0
+  },
+  {
+    "type": "bed",
+    "floor": 0,
+    "x": 1.12,
+    "z": 5.46,
+    "rotation": 1.571
+  },
+  {
+    "type": "cabinet",
+    "floor": 0,
+    "x": 0.42,
+    "z": 4.48,
+    "rotation": 1.571
+  },
+  {
+    "type": "cabinet",
+    "floor": 0,
+    "x": 0.42,
+    "z": 6.45,
+    "rotation": 1.571
+  },
+  {
+    "type": "wardrobe",
+    "floor": 0,
+    "x": 3.94,
+    "z": 5.46,
+    "rotation": 4.712
+  },
+  {
+    "type": "table",
+    "floor": 0,
+    "x": 2.34,
+    "z": 7.18,
+    "rotation": 3.142
+  },
+  {
+    "type": "chair",
+    "floor": 0,
+    "x": 2.34,
+    "z": 6.69,
+    "rotation": 3.142
+  },
+  {
+    "type": "toilet",
+    "floor": 0,
+    "x": 4.72,
+    "z": 5.55,
+    "rotation": 1.571
+  },
+  {
+    "type": "sink",
+    "floor": 0,
+    "x": 6.35,
+    "z": 4.8,
+    "rotation": 4.712
+  },
+  {
+    "type": "bath",
+    "floor": 0,
+    "x": 6.21,
+    "z": 6.72,
+    "rotation": 3.142
+  },
+  {
+    "type": "wardrobe",
+    "floor": 0,
+    "x": 7.02,
+    "z": 5.36,
+    "rotation": 1.571
+  },
+  {
+    "type": "bed",
+    "floor": 0,
+    "x": 8.38,
+    "z": 5.36,
+    "rotation": 4.712
+  },
+  {
+    "type": "cabinet",
+    "floor": 0,
+    "x": 9.12,
+    "z": 6.11,
+    "rotation": 4.712
   }
 ]

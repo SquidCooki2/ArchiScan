@@ -66,11 +66,15 @@ Flow:
 *   While the backend is not built, `?mock=1` in the URL (or a missing `VITE_API_URL`) loads `samples/sampleWalls.json` after a 1.5 s artificial delay.
 
 ## 7. Data Contract & Coordinates (must match `docs/backend_plan.md` section 6)
-Each element in the array has `{ type, floor, x, z, width, depth, rotation, sillHeight?, height? }` in **meters**:
-*   `type`: `"wall" | "window" | "door"` (treat missing `type` as `"wall"`).
+Each element in the array is either a **structural element** (`{ type, floor, x, z, width, depth, rotation, sillHeight?, height? }`) or a **furniture element** (`{ type, floor, x, z, rotation }`) in **meters**:
+*   `type`:
+    *   Structural: `"wall" | "window" | "door"` (treat missing `type` as `"wall"`).
+    *   Furniture: `"couch" | "chair" | "fridge" | "sink" | "bed" | "wardrobe" | "cabinet" | "toilet" | "table" | "bath"`.
 *   `floor`: non-negative integer (`0` = ground floor, `1` = second floor, etc.; treat missing `floor` as `0` for backwards compatibility).
-*   `(x, z)` is the element's **center**; `width` is length along local X; `depth` is thickness along local Z; `rotation` is radians around Y. Origin is the top-left of the plan, +X right, +Z down the image.
-*   `sillHeight` and `height`: vertical placement and height in meters for `"window"` (default `0.9` and `1.2`) and `"door"` (default `0` and `2.1`). Full wall height per floor is `WALL_HEIGHT = 2.7`. 
+*   `(x, z)` is the element's **center**; origin is the top-left of the plan, +X right, +Z down the image.
+*   For structural elements, `width` is length along local X; `depth` is thickness along local Z; `rotation` is radians around Y in `[0, π)`. `sillHeight` and `height` give vertical placement and height for `"window"` (default `0.9` and `1.2`) and `"door"` (default `0` and `2.1`). Full wall height per floor is `WALL_HEIGHT = 2.7`.
+*   For furniture elements, `width` and `depth` are omitted (the frontend places fixed-size 3D models at `[item.x, (item.floor ?? 0) * WALL_HEIGHT, item.z]`), and `rotation` is in `[0, 2π)` indicating facing direction (`0` = faces `+Z`, `π/2` = faces `+X`, `π` = faces `-Z`, `3π/2` = faces `-X`).
+*   When computing model bounds in `computeBounds(elements)`, use `(w.width ?? 0) / 2` so furniture items without `width`/`depth` never produce `NaN`. 
 
 ## 8. 3D Viewer
 ### Canvas & camera
