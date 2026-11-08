@@ -9,7 +9,8 @@
   "scripts": {
     "test": "node --test",
     "start": "node src/server.js",
-    "dev": "node --watch src/server.js"
+    "dev": "node --watch src/server.js",
+    "sample": "node scripts/run-sample.js"
   },
   "keywords": [],
   "author": "",

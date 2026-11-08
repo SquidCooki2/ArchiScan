@@ -2,6 +2,7 @@ const express = require('express');
 const { HttpError, ModelOutputError } = require('../lib/errors');
 const { extractJson } = require('../lib/extractJson');
 const { validateWalls } = require('../lib/validateWalls');
+const { sniffMediaType } = require('../lib/sniffMediaType');
 
 const ALLOWED_MEDIA_TYPES = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
 const DATA_URL_RE = /^data:([^;,]+);base64,/i;
@@ -30,6 +31,9 @@ function parseRequestBody(body) {
   if (base64.length % 4 !== 0 || !BASE64_RE.test(base64)) {
     throw new HttpError(400, 'INVALID_REQUEST', '"image" is not valid base64');
   }
+  // Trust the actual bytes over the declared type (e.g. a WebP saved as .png).
+  const sniffed = sniffMediaType(Buffer.from(base64.slice(0, 64), 'base64'));
+  if (sniffed) mediaType = sniffed;
   return { base64, mediaType };
 }
 
