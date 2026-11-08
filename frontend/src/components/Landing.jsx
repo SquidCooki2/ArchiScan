@@ -11,9 +11,9 @@ export default function Landing({ onBrowse, onSample, samples }) {
       <p className={`max-w-[28rem] text-slate-300 ${side ? 'mt-6 text-[clamp(1rem,1.25vw,1.125rem)] leading-[1.7]' : 'mt-4 text-base leading-7 sm:text-lg sm:leading-8'}`}>Upload a drawing. ArchiTech finds the walls, doors, and windows, then builds them in 3D.</p>
       <div className={`flex flex-wrap items-center gap-x-4 gap-y-2 ${side ? 'mt-8' : 'mt-6'}`}>
         <Button variant="primary" onClick={onBrowse} className="min-h-12 px-5 text-base pointer-coarse:min-h-12"><Icon name="upload" className="size-5" />Upload floor plan</Button>
-        <span className="hidden text-sm text-slate-300 sm:inline">or drop an image anywhere</span>
+        <span className="hidden text-sm text-slate-300 sm:inline">or drop a file anywhere</span>
       </div>
-      <p className="mt-4 text-sm leading-6 text-slate-400">PNG, JPG, WebP, or GIF, up to 5 MB each. For more than one floor, select one image per floor, with file names in order from the ground up.</p>
+      <p className="mt-4 text-sm leading-6 text-slate-400">PNG, JPG, WebP, or GIF, up to 5 MB each. For more than one floor, select one image per floor, with file names in order from the ground up. A plan saved as JSON opens straight away.</p>
       <div className={`flex flex-wrap items-center gap-x-1 gap-y-1 ${side ? 'mt-7' : 'mt-5'}`}>
         <span className="mr-2 text-sm text-slate-300">Or try a sample:</span>
         {samples.map(sample => <Button key={sample.id} variant="quiet" onClick={() => onSample(sample.id)} className="px-2.5 underline decoration-white/30 underline-offset-4">{sample.name}</Button>)}

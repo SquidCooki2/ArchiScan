@@ -2,6 +2,7 @@ import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } fro
 import { ACCEPTED_TYPES, isMockMode, loadSample, parseBlueprint, validateFile } from './api/parseBlueprint'
 import { computeBounds, countElements, floorCount } from './lib/geometry'
 import { modelNameFor, orderFloorFiles } from './lib/floorFiles'
+import { isPlanFile, PLAN_FILE_TYPES, readPlanFile, validatePlanFiles } from './lib/planFile'
 import { computeRoofPlan, DEFAULT_ROOF, roofTopHeight } from './lib/roof'
 import { useEvacuation } from './lib/useEvacuation'
 import { settleFurniture } from './lib/settleFurniture'
@@ -110,13 +111,17 @@ export default function App() {
     setStatus(hasModel ? 'ready' : 'idle')
   }
 
-  /** Opens a sample by id, or reads the given images as one model, one image per floor. */
+  /** Opens a sample by id, a plan saved as JSON, or the given images as one model, one image per floor. */
   async function open({ sampleId = null, files = [] }) {
     let ordered = files
+    const planFile = !sampleId && files.some(isPlanFile)
     if (!sampleId) {
       try {
-        ordered = orderFloorFiles(files)
-        ordered.forEach(validateFile)
+        if (planFile) validatePlanFiles(files)
+        else {
+          ordered = orderFloorFiles(files)
+          ordered.forEach(validateFile)
+        }
       } catch (err) { setError(err.message); return }
     }
     request.current?.abort()
@@ -124,19 +129,22 @@ export default function App() {
     const controller = new AbortController()
     request.current = controller
     const sample = sampleId ? SAMPLES[sampleId] : null
-    pendingUrls.current = sample ? [] : ordered.map(file => URL.createObjectURL(file))
+    pendingUrls.current = sample || planFile ? [] : ordered.map(file => URL.createObjectURL(file))
     const previews = sample ? sample.previews : pendingUrls.current
-    setPending({ preview: previews[0], floors: previews.length, sample: Boolean(sample) || isMockMode() })
+    // A JSON file opens at once, so it skips the overlay rather than flashing it.
+    if (!planFile) setPending({ preview: previews[0], floors: previews.length, sample: Boolean(sample) || isMockMode() })
     setError(null)
     setStatus('loading')
     try {
-      const nextWalls = sample ? await loadSample(controller.signal, sampleId) : await parseBlueprint(ordered, { signal: controller.signal })
+      const saved = planFile ? await readPlanFile(files[0]) : null
+      const nextWalls = saved ? saved.walls : sample ? await loadSample(controller.signal, sampleId) : await parseBlueprint(ordered, { signal: controller.signal })
       if (request.current !== controller || controller.signal.aborted) return
       revoke(committedUrls.current)
       committedUrls.current = pendingUrls.current
       pendingUrls.current = []
-      setWalls(settleFurniture(nextWalls))
-      setModel({ name: sample ? sample.name : modelNameFor(ordered), previews, demoUpload: !sample && isMockMode() })
+      setWalls(saved?.settled ? nextWalls : settleFurniture(nextWalls))
+      setModel({ name: saved?.name ?? (sample ? sample.name : modelNameFor(ordered)), previews, demoUpload: !saved && !sample && isMockMode() })
+      if (saved?.roofType) setRoofType(saved.roofType)
       setFloorView('all')
       setMode('explore')
       leaveWalk()
@@ -210,7 +218,7 @@ export default function App() {
     <div inert={loading}>
       {!hasModel && <div className="pointer-events-none fixed top-0 left-0 z-20 p-3 sm:px-[6vw] sm:py-6"><Wordmark /></div>}
       {hasModel && <Header loading={loading} mode={mode} onMode={changeMode} onUpload={browse} walking={humanMode === 'human'} hidden={humanMode === 'human' && humanLocked} exportFrom={{ walls, name: model.name, roofType, units }} />}
-      <input ref={input} type="file" multiple accept={ACCEPTED_TYPES.join(',')} className="hidden" aria-label="Upload floor plans" onChange={event => { const files = [...event.target.files]; event.target.value = ''; if (files.length) open({ files }) }} />
+      <input ref={input} type="file" multiple accept={[...ACCEPTED_TYPES, ...PLAN_FILE_TYPES].join(',')} className="hidden" aria-label="Upload floor plans" onChange={event => { const files = [...event.target.files]; event.target.value = ''; if (files.length) open({ files }) }} />
       {!hasModel && <Landing onBrowse={browse} onSample={sampleId => open({ sampleId })} samples={[SAMPLES.house, SAMPLES.apartment]} />}
       {hasModel && humanMode !== 'human' && <ModelTitle name={model.name} counts={counts} bounds={bounds} floors={floors} demoUpload={model.demoUpload} />}
       {hasModel && humanMode !== 'human' && <PlanCard previewUrl={model.previews[planFloor] ?? model.previews[0]} caption={planCaption} hint={hint} dismiss={loading || dragging} />}

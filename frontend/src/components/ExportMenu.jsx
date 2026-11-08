@@ -7,7 +7,7 @@ import { Button, focusRing } from './ui'
 const FORMATS = [
   { id: 'csv', title: 'Bill of materials (.csv)', opens: 'Excel, Google Sheets, Numbers' },
   { id: 'dxf', title: 'Floor plans (.dxf)', opens: 'AutoCAD, Revit, SketchUp, ArchiCAD' },
-  { id: 'json', title: 'Model and quantities (.json)', opens: 'Your own scripts and tools' },
+  { id: 'json', title: 'Model and quantities (.json)', opens: 'ArchiTech, or your own scripts' },
 ]
 
 function save(filename, contents, type) {

@@ -51,6 +51,7 @@ src/
 │   ├── billOfMaterials.js    # quantities, schedules and checks from the plan
 │   ├── expandPlan.js         # geometry for the expanding drawing
 │   ├── exports.js            # CSV, DXF and JSON files
+│   ├── planFile.js           # checks and opens a plan saved as JSON, without the backend
 │   ├── prices.js             # rough unit prices for the bill
 │   ├── settleFurniture.js    # moves or trims furniture clear of walls, stairs and each other
 │   └── surfaceUv.js          # texture coordinates in meters
@@ -213,7 +214,7 @@ A mode beside Explore that answers "there's a fire here and I'm there, how do I 
 
 ## 10. UI Components
 *   **Header:** the wordmark as plain text, the mode switch once a model is loaded (Explore, Walk, Escape route, BoM), Export, and "New plan". While walking only the mode switch stays, and it goes too while the mouse is captured, so the view stays clear.
-*   **Landing:** one primary upload button, with a full-window overlay while a file is dragged over the page. The hidden `<input type="file" multiple>` takes up to 5 images, one per floor, sorted by file name.
+*   **Landing:** one primary upload button, with a full-window overlay while a file is dragged over the page. The hidden `<input type="file" multiple>` takes up to 5 images, one per floor, sorted by file name, or one JSON plan. A JSON plan is either the backend's list of elements, a `{ walls }` wrapper, or a file from the Export menu. It's checked and opened in the browser with no backend call or loading overlay, and an export also brings back its name and roof. It has no drawing, so the plan thumbnail doesn't show.
 *   **LoadingOverlay:** shows the uploaded plan with a scan line, and says how many floors are being read.
 *   **ErrorToast:** says what went wrong and how to fix it, auto-dismisses after 6 s, and has a close button.
 *   Responsive: works at 1280 px and above; the controls panel should remain usable on narrow screens (`max-w-[90vw]`).

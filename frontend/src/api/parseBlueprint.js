@@ -6,7 +6,7 @@ export const MAX_IMAGE_BYTES = 5 * 1024 * 1024
 export const isMockMode = () => new URLSearchParams(window.location.search).get('mock') === '1' || !import.meta.env.VITE_API_URL?.trim()
 
 export function validateFile(file) {
-  if (!file || !ACCEPTED_TYPES.includes(file.type)) throw new Error('Choose a PNG, JPG, WebP, or GIF image.')
+  if (!file || !ACCEPTED_TYPES.includes(file.type)) throw new Error('Choose a PNG, JPG, WebP, or GIF image, or a JSON plan.')
   if (file.size > MAX_IMAGE_BYTES) throw new Error(`${file.name} is over 5 MB. Choose a smaller image.`)
   if (!file.size) throw new Error(`${file.name} is empty. Choose another image.`)
 }

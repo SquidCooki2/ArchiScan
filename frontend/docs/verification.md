@@ -208,3 +208,16 @@ Concrete, OSB sheathing, drywall, and shingles were compared with published 2026
 In one early run, a first Enter press didn't leave the view open. A late `close` event could have shut a reopened view, so that's now guarded, and it hasn't happened again in later runs, including 6 repeats of the same keys. The cause wasn't proven.
 
 Smoothness itself wasn't measured. The headless browser draws the 3D scene in software at 6 or 7 frames per second, so it needs a look on a real graphics card. Safari, Firefox, and real touch weren't tested. The thumbnail still only shows from 1024 px wide, so phones and most tablets don't have this view.
+
+## Opening a plan from JSON
+
+`npm test` passes 158 frontend tests. Lint and the production build are clean. These checks ran in the real app in the dev server, with the backend not running and every `fetch` and `XMLHttpRequest` recorded.
+
+- A backend-format file opened in 61 ms with no loading overlay and no calls to the backend. A drop event onto the window works the same way, as does a file with no type set by the browser.
+- A model exported with a flat roof, then reopened after loading another plan, came back with its name and flat roof. Exporting it again gave byte-identical elements and the same estimated cost.
+- Exported files skip furniture settling, because settling an already settled plan moved pieces by up to 3 cm on the sample apartment.
+- With `?mock=1`, a JSON file opens the file itself rather than the sample, with no demo notice.
+- Invalid JSON, no plan in the file, an empty file, no walls, a bad element, too many floors, an over-large plan, two files, and an image mixed with JSON each show their own message and leave the current model in place.
+- All four tabs opened without errors on a plan with no drawing. That only checks they don't crash: routes and walking weren't run through on it, though neither depends on the drawing.
+
+Not tested: a real file picker (the checks set the input's files from script), Safari, and Firefox. The backend's checks also accept alternative type names such as `sofa` and numbers written as strings. A JSON file doesn't get that leniency, so hand-written files need the exact format.
