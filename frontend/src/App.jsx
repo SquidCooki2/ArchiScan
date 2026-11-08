@@ -39,6 +39,8 @@ export default function App() {
   const [humanPlacement, setHumanPlacement] = useState(null)
   const [humanSpawn, setHumanSpawn] = useState(null)
   const [humanTransition, setHumanTransition] = useState(false)
+  const [humanFloor, setHumanFloor] = useState(0)
+  const [showFurniture, setShowFurniture] = useState(true)
   const humanMovement = useRef({})
   const input = useRef()
   const request = useRef(null)
@@ -56,9 +58,9 @@ export default function App() {
   const maxHeight = roofTopHeight(roofPlan, roofType)
   const cut = useSection(bounds, floorView, maxHeight)
   const evacuation = useEvacuation(walls)
-  // Walking and escape routes happen on one floor; escape routes only on the ground floor.
+  // Starting a walk and planning an escape both look down on one floor at a time.
   const walkFloor = floorView === 'all' ? 0 : floorView
-  const activeFloor = mode === 'escape' ? 0 : mode === 'walk' ? walkFloor : floorView
+  const activeFloor = mode === 'escape' ? evacuation.floor : mode === 'walk' ? walkFloor : floorView
   const humanMode = mode !== 'walk' ? 'overview' : humanSpawn ? 'human' : 'placing'
 
   const dismissError = useCallback(() => setError(null), [])
@@ -76,7 +78,7 @@ export default function App() {
     humanMovement.current = {}
   }, [])
   const exitWalk = useCallback(() => { leaveWalk(); setMode('explore') }, [leaveWalk])
-  const enterWalk = useCallback(position => { setHumanTransition(true); setHumanSpawn(position) }, [])
+  const enterWalk = useCallback(position => { setHumanTransition(true); setHumanFloor(walkFloor); setHumanSpawn({ ...position, floor: walkFloor }) }, [walkFloor])
 
   function changeMode(next) {
     if (next === mode) return
@@ -186,7 +188,7 @@ export default function App() {
   const planFloor = activeFloor === 'all' ? 0 : activeFloor
   const planCaption = floors > 1 ? `Floor ${planFloor + 1} plan` : 'Original plan'
   const hint = cut.drawing ? 'Drag on the floor, or click two corners. Esc cancels.' : mode === 'escape' && evacuation.plan ? HINTS.escape : HINTS.orbit
-  const statusText = !hasModel || loading ? '' : humanMode === 'human' ? 'Walking. Use W A S D or the arrow keys to move, and Escape to stop.' : `3D model ready: ${model.name}.`
+  const statusText = !hasModel || loading ? '' : humanMode === 'human' ? `Walking${floors > 1 ? ` on Floor ${humanFloor + 1}` : ''}. Use W A S D or the arrow keys to move, and Escape to stop.` : `3D model ready: ${model.name}.`
 
   return <div className="relative min-h-svh overflow-hidden bg-[#171c22] font-[family-name:Archivo,ui-sans-serif,system-ui,sans-serif] text-slate-100 selection:bg-sky-300/30">
     <div className="pointer-events-none fixed inset-0 bg-[radial-gradient(ellipse_at_62%_42%,#2a323c_0%,#171c22_68%)]" />
@@ -194,7 +196,7 @@ export default function App() {
       <Suspense fallback={null}>
         <Viewer walls={shownWalls} hero={!hasModel} modelKey={modelKey} floor={hasModel ? activeFloor : 'all'} section={cut.section} sectionRange={cut.range} area={cut.area} resetKey={resetKey}
           drawingArea={cut.drawing} onArea={cut.updateArea} onCompleteArea={cut.completeArea} onCancelArea={cut.cancelArea} onPosition={cut.setPosition}
-          humanMode={humanMode} humanPlacement={humanPlacement} humanSpawn={humanSpawn} humanMovement={humanMovement} onHumanPreview={setHumanPlacement} onHumanEnter={enterWalk} onHumanExit={exitWalk} onHumanTransition={setHumanTransition}
+          humanMode={humanMode} humanPlacement={humanPlacement} humanSpawn={humanSpawn} humanMovement={humanMovement} onHumanPreview={setHumanPlacement} onHumanEnter={enterWalk} onHumanExit={exitWalk} onHumanTransition={setHumanTransition} onHumanFloor={setHumanFloor} showFurniture={showFurniture}
           roofPlan={roofPlan} roofType={roofType} maxHeight={maxHeight} loadedAt={loadedAt} evacuation={evacuation} />
       </Suspense>
     </div>
@@ -205,10 +207,10 @@ export default function App() {
       {!hasModel && <Landing onBrowse={browse} onSample={sampleId => open({ sampleId })} samples={[SAMPLES.house, SAMPLES.apartment]} />}
       {hasModel && humanMode !== 'human' && <ModelTitle name={model.name} counts={counts} bounds={bounds} floors={floors} demoUpload={model.demoUpload} />}
       {hasModel && humanMode !== 'human' && <PlanCard previewUrl={model.previews[planFloor] ?? model.previews[0]} caption={planCaption} hint={hint} />}
-      {hasModel && mode === 'explore' && <ExplorePanel floors={floors} floor={floorView} onFloor={changeFloor} roofType={roofType} onRoof={setRoofType} cut={cut} onResetView={resetCamera} />}
+      {hasModel && mode === 'explore' && <ExplorePanel floors={floors} floor={floorView} onFloor={changeFloor} roofType={roofType} onRoof={setRoofType} cut={cut} onResetView={resetCamera} hasFurniture={counts.furniture > 0} showFurniture={showFurniture} onShowFurniture={setShowFurniture} />}
       {hasModel && humanMode === 'placing' && <WalkStart floors={floors} floor={walkFloor} onFloor={changeFloor} placement={humanPlacement} onMiddle={startInMiddle} />}
-      {hasModel && humanMode === 'human' && <WalkControls movement={humanMovement} transitioning={humanTransition} onRepick={leaveWalk} />}
-      {hasModel && mode === 'escape' && <EvacuationPanel evacuation={evacuation} imageUrl={model.previews[0]} floors={floors} onResetView={resetCamera} />}
+      {hasModel && humanMode === 'human' && <WalkControls movement={humanMovement} transitioning={humanTransition} onRepick={leaveWalk} floor={floors > 1 ? humanFloor : null} />}
+      {hasModel && mode === 'escape' && <EvacuationPanel evacuation={evacuation} previews={model.previews} floors={floors} onResetView={resetCamera} />}
     </div>
     {dragging && !loading && <div className="pointer-events-none fixed inset-3 z-30 grid place-items-center rounded-xl border-2 border-dashed border-sky-300 bg-[#171c22]/70"><p className="text-xl font-medium text-slate-100">Drop to build this floor plan</p></div>}
     <div aria-hidden="true" className={`pointer-events-none fixed inset-0 z-30 bg-[#171c22] transition-opacity duration-500 motion-reduce:transition-none ${humanTransition ? 'opacity-100' : 'opacity-0'}`} />

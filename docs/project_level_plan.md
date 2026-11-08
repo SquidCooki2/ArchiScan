@@ -92,7 +92,7 @@ Detailed plans: [frontend_plan.md](frontend_plan.md) and [backend_plan.md](backe
 **Limits:** images up to 5 MB (png/jpeg/webp/gif); request body up to 50 MB; frontend timeout 150 s.
 
 ## 5a. Evacuation Brief Contract
-Optional AI explanation of an escape route. The frontend computes the route; this endpoint only writes about it. Routes cover the ground floor (`floor: 0`) because the contract has no stairs.
+Optional AI explanation of an escape route. The frontend computes the route; this endpoint only writes about it. Routes cover every floor and follow the `stairs` elements down. `facts.outcome` is `route`, `window`, or `shelter`; someone upstairs who is told to signal from a window counts as `shelter`.
 
 **Request:** `POST {VITE_API_URL}/api/evacuation-brief`
 ```json

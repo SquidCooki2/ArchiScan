@@ -4,9 +4,9 @@
 
 Load a model and choose **Walk** at the top of the screen. The view looks down on one floor, cut at plan height, so the floor is easy to point at.
 
-- Click clear floor to start walking there. A figure previews the spot as the pointer moves, and turns red with a short reason when the spot is inside a wall or outside the building.
+- Click clear floor to start walking there. A figure previews the spot as the pointer moves, and turns red with a short reason when the spot is inside a wall, on the stairs, blocked by furniture, or outside the building.
 - **Start in the middle** picks the nearest clear spot to the middle of the plan. It's also the keyboard path into a walk.
-- On a multi-floor model, **Floor** chooses which floor to walk on. Floors don't connect, because the plan data has no stairs.
+- On a multi-floor model, **Floor** chooses which floor to start on. Walk up or down the stairs to change floors. The walking controls show the floor you're on.
 
 While walking:
 

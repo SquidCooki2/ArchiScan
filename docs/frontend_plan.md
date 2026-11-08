@@ -160,7 +160,10 @@ A mode beside Explore that answers "there's a fire here and I'm there, how do I 
 *   **Scene (`viewer/EvacuationScene.jsx`):** forces a plan cut at 1.2 m without touching the user's section state, opens the doors, and tilts the camera up. Chevrons sit on the floor and a pulse of light runs toward the exit (steady under reduced motion). Dim chevrons show the backup way out.
 *   **Input:** click the floor, drag the markers, or choose a room from a list for keyboard use. Esc cancels placing.
 *   **AI (`POST /api/evacuation-brief`):** Claude writes the finished route in plain words and reads room names from the drawing. It receives the route's facts and never changes them; the route stands without it, and the button is hidden in mock mode.
-*   **Limits:** ground floor only (`floor: 0`), because the contract has no stairs. `buildEvacuationMap(elements, { obstacles })` takes furniture rectangles when those land.
+*   **Furniture:** fixed pieces block routes; chairs don't, since people push them aside. A window behind a desk still counts, standing beside the desk in the same room. If furniture is all that stands in the way, the route goes past it and the panel says so.
+*   **Floors and stairs:** `buildEvacuationBuilding` makes one map per floor, numbers rooms across the building, and finds a landing at each end of each flight, which is an obstacle on both floors it touches. `computeFireFields` carries the fire's walking distance between floors only through the stairs. `planEscape` returns one route in 3D, with `y` and `floor` on each point, and `stepGroups` for the steps per floor.
+*   **Routes only go down.** Climbing away from a fire leaves someone further from the way out with it between them. Upstairs, if every flight down is within 1.5 m of the fire on the way, the plan is `signal`: go to a window on this floor and call for help. Otherwise that window is the backup.
+*   **Limits:** floors are viewed one at a time. Stairs are straight flights between two adjacent floors, as the contract gives them.
 
 ## 10. UI Components
 *   **Header:** the wordmark, the mode switch once a model is loaded, and "New plan". It's hidden while walking so the view stays clear.

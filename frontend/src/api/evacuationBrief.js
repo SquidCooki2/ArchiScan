@@ -1,3 +1,4 @@
+import { buildingRooms } from '../lib/evacuation'
 import { fileToBase64, isMockMode } from './parseBlueprint'
 
 export const canExplainRoute = () => !isMockMode()
@@ -5,19 +6,23 @@ export const canExplainRoute = () => !isMockMode()
 const round = value => Math.round(value * 100) / 100
 
 /** Only what the writer needs: rooms, where things are, and the finished route's facts. */
-export function routeFacts({ map, plan, fire, person }) {
-  const { bounds } = map
-  const fraction = point => ({ acrossPlan: round((point.x - bounds.minX) / bounds.width), downPlan: round((point.z - bounds.minZ) / bounds.depth) })
+export function routeFacts({ building, plan, fire, person }) {
+  const fraction = (point, floor) => {
+    const { bounds } = building.maps[floor]
+    return { floor: floor + 1, acrossPlan: round((point.x - bounds.minX) / bounds.width), downPlan: round((point.z - bounds.minZ) / bounds.depth) }
+  }
   return {
-    outcome: plan.status,
-    rooms: map.rooms.map(room => ({ id: room.id, name: room.name, areaSquareMeters: round(room.area), ...fraction(room.center) })),
-    fire: { roomId: plan.fireRoom?.id ?? null, ...fraction(fire) },
-    person: { roomId: plan.personRoom?.id ?? null, nextToFire: plan.nearFire, ...fraction(person) },
+    // Signalling from a window is a form of sheltering, as far as the written brief goes.
+    outcome: plan.status === 'signal' ? 'shelter' : plan.status,
+    rooms: buildingRooms(building).map(room => ({ id: room.key, name: room.name, areaSquareMeters: round(room.area), ...fraction(room.center, room.floor) })),
+    fire: { roomId: plan.fireRoom?.key ?? null, ...fraction(fire, fire.floor) },
+    person: { roomId: plan.personRoom?.key ?? null, nextToFire: plan.nearFire, ...fraction(person, person.floor) },
     route: plan.route && {
       meters: round(plan.route.length),
       exit: plan.route.exit,
       closestMetersToFire: Number.isFinite(plan.route.minFireDistance) ? round(plan.route.minFireDistance) : null,
       passesThroughFireRoom: Boolean(plan.route.throughFireRoom),
+      flightsOfStairsDown: plan.route.flights ?? 0,
     },
     outsideDoorsCutOff: plan.blockedExits.length,
     backupWindowMeters: plan.backup ? round(plan.backup.length) : null,
@@ -41,8 +46,8 @@ async function imagePayload(imageUrl, signal) {
 }
 
 /** Asks the backend to put a finished route into plain words. Never changes the route. */
-export async function requestEvacuationBrief({ map, plan, fire, person, imageUrl, signal }) {
-  const body = { facts: routeFacts({ map, plan, fire, person }), ...(await imagePayload(imageUrl, signal)) }
+export async function requestEvacuationBrief({ building, plan, fire, person, imageUrl, signal }) {
+  const body = { facts: routeFacts({ building, plan, fire, person }), ...(await imagePayload(imageUrl, signal)) }
   let response
   try {
     response = await fetch(`${import.meta.env.VITE_API_URL.trim().replace(/\/+$/, '')}/api/evacuation-brief`, {

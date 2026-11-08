@@ -35,8 +35,8 @@ Environment values are embedded at build time. Set `VITE_API_URL` before `npm ru
 The switch at the top chooses what you're doing with the model.
 
 - **Explore:** drag to orbit, scroll or pinch to zoom, right-drag to pan. Choose a floor and a roof, move **Cut height**, or press **See floor plan**. **More options** has side cuts and drawing an area. See `docs/section-view.md`.
-- **Walk:** click the floor to start walking there. Use W A S D or the arrow keys, and drag to look. See `docs/human-perspective.md`.
-- **Escape route:** set where the fire and the person are, by room or by clicking. Arrows on the floor show the way out. Routes cover the ground floor.
+- **Walk:** click the floor to start walking there. Use W A S D or the arrow keys, and drag to look. Walk up or down the stairs to change floors. See `docs/human-perspective.md`.
+- **Escape route:** set where the fire and the person are, by room or by clicking. Arrows on the floor show the way out, down the stairs from upper floors. If the stairs are cut off, they lead to a window to signal from.
 
 Drop an image anywhere to build a new model. For more than one floor, select one image per floor.
 

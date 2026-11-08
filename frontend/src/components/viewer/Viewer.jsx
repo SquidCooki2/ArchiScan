@@ -2,12 +2,13 @@ import { Component, useMemo, useState } from 'react'
 import { Canvas } from '@react-three/fiber'
 import { Environment, Lightformer, OrbitControls } from '@react-three/drei'
 import { computeBounds, floorBase, floorCount, PLAN_CUT_HEIGHT, WALL_HEIGHT } from '../../lib/geometry'
-import { buildWalkWorld } from '../../lib/walkthrough'
+import { buildWalkBuilding } from '../../lib/walkthrough'
 import { useReducedMotion } from '../../lib/useReducedMotion'
 import HumanPlacement from './HumanPlacement'
 import HumanCamera from './HumanCamera'
 import Floor from './Floor'
 import FloorSlabs from './FloorSlabs'
+import Furniture from './Furniture'
 import Walls from './Walls'
 import Roof from './Roof'
 import CameraRig from './CameraRig'
@@ -15,7 +16,6 @@ import SectionPlane from './SectionPlane'
 import RegionSelection from './RegionSelection'
 import CutPlaneHandle from './CutPlaneHandle'
 import EvacuationScene from './EvacuationScene'
-import { CARD } from './colors'
 
 const NO_CUT = { enabled: false, axis: 'y', position: WALL_HEIGHT, flipped: false, scope: 'all' }
 
@@ -33,7 +33,7 @@ class ViewerBoundary extends Component {
  * `hero` is the landing page's slowly turning model. `floor` is the floor on show, or 'all'.
  * Placing a walk's start and planning an escape both look down on one floor, cut at plan height.
  */
-export default function Viewer({ walls, hero = false, modelKey, floor = 'all', section: userSection, sectionRange, area, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, humanMode = 'overview', humanPlacement, humanSpawn, humanMovement, onHumanPreview, onHumanEnter, onHumanExit, onHumanTransition, roofPlan, roofType, maxHeight, loadedAt, evacuation }) {
+export default function Viewer({ walls, hero = false, modelKey, floor = 'all', section: userSection, sectionRange, area, resetKey, drawingArea, onArea, onCompleteArea, onCancelArea, onPosition, humanMode = 'overview', humanPlacement, humanSpawn, humanMovement, onHumanPreview, onHumanEnter, onHumanExit, onHumanTransition, onHumanFloor, showFurniture = true, roofPlan, roofType, maxHeight, loadedAt, evacuation }) {
   const [manipulating, setManipulating] = useState(false)
   const bounds = useMemo(() => computeBounds(walls), [walls])
   const reducedMotion = useReducedMotion()
@@ -43,11 +43,13 @@ export default function Viewer({ walls, hero = false, modelKey, floor = 'all', s
   const planFloor = floor === 'all' ? 0 : floor
   const planView = useMemo(() => ({ ...NO_CUT, enabled: true, position: floorBase(planFloor) + PLAN_CUT_HEIGHT }), [planFloor])
   const looksDown = escaping || placing
+  // A walk can reach every floor, so all of them stay in the scene.
+  const shownFloor = walking ? 'all' : floor
   // Drawing a cut area needs the floor in view, so the roof and upper walls lift off for it. A
   // finished area keeps the roof off too, or it would hide most of what the area reveals.
   const section = walking ? NO_CUT : looksDown || drawingArea ? planView : userSection
   const usesCutTools = !hero && !walking && !looksDown
-  const world = useMemo(() => buildWalkWorld(walls, bounds, { floor: planFloor }), [walls, bounds, planFloor])
+  const building = useMemo(() => buildWalkBuilding(walls, bounds), [walls, bounds])
   const targetBounds = useMemo(() => ({ minX: -bounds.width / 2, maxX: bounds.width / 2, minZ: -bounds.depth / 2, maxZ: bounds.depth / 2 }), [bounds])
   const hasArea = section.scope === 'area' && Boolean(area)
   const hasTarget = section.scope === 'all' || hasArea
@@ -65,10 +67,10 @@ export default function Viewer({ walls, hero = false, modelKey, floor = 'all', s
         <Lightformer position={[0, 8, 0]} rotation-x={Math.PI / 2} scale={[15, 15, 1]} intensity={1.5} />
         <Lightformer position={[-8, 4, 0]} rotation-y={Math.PI / 2} scale={[10, 6, 1]} color="#c9d6e6" intensity={1} />
       </Environment>
-      <Floor bounds={bounds} walkthrough={walking} base={floorBase(planFloor)} />
-      {walking && <mesh name="walkthrough-ceiling" position-y={floorBase(planFloor) + WALL_HEIGHT} rotation-x={Math.PI / 2}><planeGeometry args={[bounds.width, bounds.depth]} /><meshStandardMaterial color={CARD} roughness={1} /></mesh>}
-      <Walls key={modelKey} walls={walls} bounds={bounds} section={section} area={usesCutTools ? area : null} openDoors={walking || escaping} visibleFloor={walking ? planFloor : floor} />
-      {!walking && <FloorSlabs walls={walls} bounds={bounds} section={section} cut={cut} region={region} visibleFloor={floor} ground={!escaping} />}
+      <Floor bounds={bounds} walkthrough={walking} />
+      <Walls key={modelKey} walls={walls} bounds={bounds} section={section} area={usesCutTools ? area : null} openDoors={walking || escaping} visibleFloor={shownFloor} />
+      <FloorSlabs walls={walls} bounds={bounds} section={section} cut={cut} region={region} visibleFloor={shownFloor} ground={!escaping} walking={walking} />
+      {!hero && (showFurniture || walking || looksDown) && <Furniture key={`furniture-${modelKey}`} walls={walls} bounds={bounds} section={section} cut={cut} region={region} visibleFloor={shownFloor} reducedMotion={reducedMotion} />}
       {floor === 'all' && !walking && !looksDown && !drawingArea && !hasArea && <Roof key={`${modelKey}-${roofType}`} plan={roofPlan} type={roofType} bounds={bounds} section={section} cut={cut} loadedAt={loadedAt} reducedMotion={reducedMotion} />}
       {escaping && !hero && <EvacuationScene evacuation={evacuation} bounds={bounds} onDragging={setManipulating} reducedMotion={reducedMotion} />}
       {usesCutTools && (drawingArea || section.scope === 'area') && <RegionSelection bounds={bounds} area={area} top={wallsTop} drawing={drawingArea}
@@ -78,9 +80,9 @@ export default function Viewer({ walls, hero = false, modelKey, floor = 'all', s
         <CutPlaneHandle bounds={bounds} targetBounds={targetBounds} section={section} area={area} top={wallsTop} range={sectionRange} onPosition={onPosition} onDragging={setManipulating} />
       </>}
       <OrbitControls makeDefault enabled={!walking && !drawingArea && !manipulating} autoRotate={hero && !reducedMotion} autoRotateSpeed={0.35} enableDamping dampingFactor={0.08} maxPolarAngle={Math.PI / 2 - 0.05} />
-      <CameraRig bounds={bounds} fitKey={resetKey} reducedMotion={reducedMotion} hasModel active={!walking} framing={hero ? 'hero' : 'panel'} height={looksDown ? floorBase(planFloor) + PLAN_CUT_HEIGHT : maxHeight} view={looksDown ? 'plan' : 'perspective'} />
-      {placing && <HumanPlacement world={world} placement={humanPlacement} onPreview={onHumanPreview} onEnter={onHumanEnter} onCancel={onHumanExit} />}
-      {walking && <HumanCamera spawn={humanSpawn} world={world} movement={humanMovement} reducedMotion={reducedMotion} onExit={onHumanExit} onTransition={onHumanTransition} />}
+      <CameraRig bounds={bounds} fitKey={looksDown ? `${resetKey}-${planFloor}` : resetKey} reducedMotion={reducedMotion} hasModel active={!walking} framing={hero ? 'hero' : 'panel'} height={looksDown ? floorBase(planFloor) + PLAN_CUT_HEIGHT : maxHeight} view={looksDown ? 'plan' : 'perspective'} />
+      {placing && <HumanPlacement world={building.floors[planFloor]} placement={humanPlacement} onPreview={onHumanPreview} onEnter={onHumanEnter} onCancel={onHumanExit} />}
+      {walking && <HumanCamera spawn={humanSpawn} building={building} movement={humanMovement} reducedMotion={reducedMotion} onExit={onHumanExit} onTransition={onHumanTransition} onFloor={onHumanFloor} />}
     </Canvas>
   </ViewerBoundary>
 }

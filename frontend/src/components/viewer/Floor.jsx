@@ -2,10 +2,10 @@ import { Grid } from '@react-three/drei'
 import { WALK_FLOOR } from './colors'
 
 /** The drafting table: only shadows and a faint grid, so the page background shows through. */
-export default function Floor({ bounds, walkthrough = false, base = 0 }) {
+export default function Floor({ bounds, walkthrough = false }) {
   const size = Math.max(bounds.size + 6, 16)
   if (walkthrough) {
-    return <mesh rotation-x={-Math.PI / 2} position-y={base} receiveShadow>
+    return <mesh rotation-x={-Math.PI / 2} receiveShadow>
       <planeGeometry args={[size, size]} /><meshStandardMaterial color={WALK_FLOOR} roughness={1} />
     </mesh>
   }

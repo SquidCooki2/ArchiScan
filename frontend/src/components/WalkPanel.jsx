@@ -8,7 +8,7 @@ export function WalkStart({ floors, floor, onFloor, placement, onMiddle }) {
   return <Panel label="Choose where to start walking">
     <div>
       <h2 className="text-lg font-medium tracking-tight text-slate-100">Pick a starting spot</h2>
-      <p className="mt-1 text-sm leading-6 text-slate-300">Click anywhere on the floor to start walking there at eye height.</p>
+      <p className="mt-1 text-sm leading-6 text-slate-300">Click anywhere on the floor to start walking there at eye height.{floors > 1 ? ' Walk up or down the stairs to change floors.' : ''}</p>
     </div>
     {floors > 1 && <Segmented legend="Floor" name="walk-floor" options={floorOptions(floors)} value={floor} onChange={onFloor} />}
     {placement && !placement.valid && <p role="status" className="text-sm leading-6 text-red-200">{placement.reason}</p>}
@@ -25,10 +25,11 @@ const ARROWS = [
 ]
 
 /** While walking: how to move, on-screen arrows for touch, and a way to start somewhere else. */
-export function WalkControls({ movement, transitioning, onRepick }) {
+export function WalkControls({ movement, transitioning, onRepick, floor }) {
   const hold = (direction, held) => { movement.current[direction] = held }
   return <section aria-label="Walking controls" className="fixed inset-x-3 bottom-3 z-20 flex items-end justify-between gap-3 sm:inset-x-5 sm:bottom-5">
     <div className="rounded-xl border border-white/10 bg-[#20262e] p-3">
+      {floor !== null && <p className="text-sm font-medium text-slate-100">Floor {floor + 1}</p>}
       <p className="text-sm leading-6 text-slate-100"><span className="pointer-coarse:hidden">Use W A S D or the arrow keys to walk. Drag to look.</span><span className="hidden pointer-coarse:inline">Hold an arrow to walk. Drag to look.</span></p>
       <div className="mt-2 flex flex-wrap items-center gap-x-3 gap-y-1">
         <Button onClick={onRepick}>Pick another spot</Button>
