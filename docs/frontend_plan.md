@@ -110,6 +110,26 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
 *   If the payload contains upper floors (`maxFloor > 0`), render a thin translucent floor slab at `y = f * WALL_HEIGHT` for each upper floor `f = 1..maxFloor` sized to that floor's bounds, clipped by the same section plane.
 *   Use `key={index}`.
 
+### Procedural Stairs (`lib/elementParts.js` / `Walls.jsx` & `FloorSlabs.jsx`)
+*   **Stairs are generated procedurally by the frontend** (there is no static stair `.gltf` model).
+*   For each element with `type === 'stairs'` (`{ type: 'stairs', floor, x, z, width, depth, rotation }`):
+    *   `width` is the horizontal run length along the direction of ascent; `depth` is the tread width perpendicular to travel; `rotation` in `[0, 2π)` is the ascending (`UP`) direction (`0` = `+Z`, `π/2` = `+X`, `π` = `-Z`, `3π/2` = `-X`).
+    *   Generate `N = Math.max(8, Math.round(WALL_HEIGHT / 0.18))` steps (typically 15 steps for a 2.7 m story height) climbing from `y = floor * WALL_HEIGHT` to `y = (floor + 1) * WALL_HEIGHT`. Each step `i` (`0..N-1`) is a box of tread length `width / N`, width `depth`, and height `(i + 1) * (WALL_HEIGHT / N)` (or individual riser/tread prisms on a sloped stringer) progressing from `-width / 2` to `+width / 2` along the ascending axis.
+    *   **Upper floor slab cutout:** In `FloorSlabs.jsx`, subtract or split the slab at `floor + 1` around the staircase's `(x, z, width, depth, rotation)` rectangle so the stairwell opening is unobstructed when viewing or walking between floors.
+
+### Furniture Models & Sizing Caveat (`public/assets/furniture/`)
+*   Static 3D furniture assets (KayKit Furniture Bits `.gltf` + `.bin` + `furniturebits_texture.png`) live in `frontend/public/assets/furniture/` and are loaded via Drei's `useGLTF('/assets/furniture/<name>.gltf')`:
+    *   `"couch"` → `couch.gltf` (or `couch_pillows.gltf`), native bounding box `[3.0, 1.22, 1.6]`
+    *   `"chair"` → `chair_A.gltf` (or `chair_A_wood.gltf`, `chair_B.gltf`, `armchair.gltf`), native bounding box `[0.75, 1.26, 0.85]`
+    *   `"bed"` → `bed_double_A.gltf` / `bed_single_A.gltf`, native bounding box `[3.1, 1.0, 3.0]` (double)
+    *   `"cabinet"` → `cabinet_medium.gltf` / `cabinet_small.gltf`, native bounding box `[2.0, 1.0, 1.0]`
+    *   `"wardrobe"` → `shelf_A_big.gltf` (or `cabinet_medium.gltf`), native bounding box `[2.0, 2.0, 0.75]`
+    *   `"table"` → `table_medium.gltf` / `table_medium_long.gltf` / `table_low.gltf`, native bounding box `[2.0, 1.0, 2.0]`
+    *   **Fixtures not in the KayKit pack (`"fridge"`, `"sink"`, `"toilet"`, `"bath"`):** Render clean procedural Three.js box/cylinder groups (or fallback cabinet/shelf GLTFs) styled to match the architectural model.
+*   **IMPORTANT — Model Sizing / Scale Normalization:**
+    *   The raw `.gltf` assets in `public/assets/furniture/` are authored in stylized game units roughly **1.4× to 1.6× larger than real-world meters** (e.g., `bed_double_A.gltf` is `3.1 × 3.0` units and `couch.gltf` is `3.0 × 1.6` units, whereas floorplan walls use true meters with `WALL_HEIGHT = 2.7` m).
+    *   Rendering the GLTFs at `scale={1}` will make furniture look oversized and clip into adjacent walls or doorways. Apply a per-type target height/footprint normalization (computing a `THREE.Box3().setFromObject(scene)` on the cloned GLTF and scaling to a realistic meter size, or applying an approximate uniform `scale={0.6}`–`0.65` multiplier) and attach the active `clippingPlanes` to every mesh material in the cloned GLTF scene.
+
 ### Floor (`Floor.jsx`)
 A `<mesh rotation-x={-Math.PI / 2}>` plane at `y = 0` slightly larger than the bounds (`size + 4`), dark material that receives shadows, plus Drei `<Grid infiniteGrid fadeDistance={40} cellColor="#333" sectionColor="#555" />`.
 
