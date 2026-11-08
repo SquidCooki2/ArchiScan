@@ -4,7 +4,7 @@ const { extractJson } = require('../lib/extractJson');
 const { validateWalls } = require('../lib/validateWalls');
 const { createApp } = require('../app');
 
-const WALL = { type: 'wall', x: 2, z: 0.1, width: 4, depth: 0.2, rotation: 0 };
+const WALL = { type: 'wall', floor: 0, x: 2, z: 0.1, width: 4, depth: 0.2, rotation: 0 };
 
 test('extractJson: plain, fenced, prose-wrapped, garbage', () => {
   const json = JSON.stringify([WALL]);
@@ -16,9 +16,11 @@ test('extractJson: plain, fenced, prose-wrapped, garbage', () => {
   assert.throws(() => extractJson(''));
 });
 
-test('validateWalls: valid, default type, coercion, rounding, rotation', () => {
+test('validateWalls: valid, default type and floor, coercion, rounding, rotation', () => {
   const out = validateWalls([{ x: '1.23456', z: 2, width: 3, depth: 0.2, rotation: -Math.PI / 2, extra: 1 }]);
-  assert.deepEqual(out, [{ type: 'wall', x: 1.235, z: 2, width: 3, depth: 0.2, rotation: 1.571 }]);
+  assert.deepEqual(out, [{ type: 'wall', floor: 0, x: 1.235, z: 2, width: 3, depth: 0.2, rotation: 1.571 }]);
+  const floor2 = validateWalls([{ x: 1, z: 2, width: 3, depth: 0.2, rotation: 0 }], 2);
+  assert.equal(floor2[0].floor, 2);
   assert.deepEqual(validateWalls([]), []);
 });
 
@@ -28,8 +30,8 @@ test('validateWalls: window and door types with default and custom sillHeight/he
     { type: 'door', x: 4, z: 0.1, width: 0.9, depth: 0.2, rotation: 0, sillHeight: 0, height: 2.05 },
   ]);
   assert.deepEqual(out, [
-    { type: 'window', x: 2, z: 0.1, width: 1.2, depth: 0.2, rotation: 0, sillHeight: 0.9, height: 1.2 },
-    { type: 'door', x: 4, z: 0.1, width: 0.9, depth: 0.2, rotation: 0, sillHeight: 0, height: 2.05 },
+    { type: 'window', floor: 0, x: 2, z: 0.1, width: 1.2, depth: 0.2, rotation: 0, sillHeight: 0.9, height: 1.2 },
+    { type: 'door', floor: 0, x: 4, z: 0.1, width: 0.9, depth: 0.2, rotation: 0, sillHeight: 0, height: 2.05 },
   ]);
   assert.throws(() => validateWalls([{ ...WALL, type: 'roof' }]));
 });
@@ -84,9 +86,33 @@ test('200 success, data URL accepted', async () => {
   });
 });
 
-test('400 invalid requests', async () => {
+test('200 multi-floor images array tags floor 0, 1, ... in order', async () => {
   await withServer(okClaude, async (req) => {
-    for (const body of [{}, { image: 5 }, { image: '!!notbase64!!' }, { image: IMG, mediaType: 'image/bmp' }]) {
+    const r = await req(post, {
+      images: [
+        { image: IMG, mediaType: 'image/png' },
+        `data:image/png;base64,${IMG}`,
+      ],
+    });
+    assert.equal(r.status, 200);
+    assert.equal(r.body.length, 2);
+    assert.equal(r.body[0].floor, 0);
+    assert.equal(r.body[1].floor, 1);
+  });
+});
+
+test('400 invalid requests (single and multi-floor)', async () => {
+  await withServer(okClaude, async (req) => {
+    const invalidBodies = [
+      {},
+      { image: 5 },
+      { image: '!!notbase64!!' },
+      { image: IMG, mediaType: 'image/bmp' },
+      { images: [] },
+      { images: Array.from({ length: 6 }, () => ({ image: IMG })) },
+      { images: [{ image: IMG }, { image: '!!bad!!' }] },
+    ];
+    for (const body of invalidBodies) {
       const r = await req(post, body);
       assert.equal(r.status, 400);
       assert.equal(r.body.error.code, 'INVALID_REQUEST');
@@ -101,6 +127,10 @@ test('413 image too large', async () => {
     const r = await req(post, { image: Buffer.alloc(500).toString('base64') });
     assert.equal(r.status, 413);
     assert.equal(r.body.error.code, 'IMAGE_TOO_LARGE');
+
+    const rMulti = await req(post, { images: [{ image: IMG }, { image: Buffer.alloc(500).toString('base64') }] });
+    assert.equal(rMulti.status, 413);
+    assert.equal(rMulti.body.error.code, 'IMAGE_TOO_LARGE');
   });
 });
 

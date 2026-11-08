@@ -1,4 +1,4 @@
-import { PLAN_CUT_HEIGHT } from '../lib/geometry'
+import { PLAN_CUT_HEIGHT, elementType } from '../lib/geometry'
 import { cutRange } from '../lib/sections'
 import AreaPicker from './AreaPicker'
 import Icon from './Icon'
@@ -19,17 +19,18 @@ export default function SectionControls({ section, bounds, walls, selectedWalls,
       <span className="flex items-center gap-2 text-sm font-medium"><Icon name="section" className="size-4 text-indigo-300" />Section view</span>
       <span className={`text-xs font-medium ${enabled ? 'text-indigo-200' : 'text-white/45'}`}>{drawingArea ? 'Selecting' : enabled ? 'On' : 'Off'}</span>
     </button>
-    <div className="mt-4 border-t border-white/10 pt-3">
+    <details aria-label="Selection tools" open={!area || drawingArea || scope !== 'area'} className="mt-4 border-t border-white/10 pt-3">
+      <summary className="mb-3 flex cursor-pointer items-center justify-between gap-2 rounded py-1 text-xs text-indigo-200 focus-visible:outline-2 focus-visible:outline-indigo-400"><span>{scope === 'area' && area ? `${(area.maxX - area.minX).toFixed(2)} × ${(area.maxZ - area.minZ).toFixed(2)} m selected` : 'Choose selection'}</span><span className="text-[10px] text-white/45">Edit selection ▾</span></summary>
       <p className="mb-2 text-xs text-white/50">Selection tools</p>
       <div className="grid grid-cols-3 gap-2" role="group" aria-label="Cut target">
-        {[['area', 'Area'], ['walls', 'Walls'], ['all', 'Entire model']].map(([value, name]) => <button key={value} type="button" aria-pressed={scope === value} onClick={() => onScope(value)} className={choiceStyle(scope === value)}>{name}</button>)}
+        {[['area', 'Area'], ['walls', 'Elements'], ['all', 'Entire model']].map(([value, name]) => <button key={value} type="button" aria-pressed={scope === value} onClick={() => onScope(value)} className={choiceStyle(scope === value)}>{name}</button>)}
       </div>
       {scope === 'walls' && <div className="mt-3 space-y-2">
-        <p className="text-[11px] leading-5 text-white/50">Click wall sections in 3D to select them. Drag to orbit.</p>
+        <p className="text-[11px] leading-5 text-white/50">Click walls, windows, or doors in 3D to select them. Drag to orbit.</p>
         <div className="flex items-center justify-between gap-2 text-[11px]"><span role="status" className="text-indigo-200">{selectedWalls.length} selected</span><div className="flex gap-2"><button type="button" onClick={onSelectAll} className="rounded p-1 text-white/60 hover:text-white focus-visible:outline-2 focus-visible:outline-indigo-400">Select all</button><button type="button" onClick={onClear} className="rounded p-1 text-white/60 hover:text-white focus-visible:outline-2 focus-visible:outline-indigo-400">Clear selection</button></div></div>
-        <details className="text-[11px] text-white/50"><summary className="cursor-pointer rounded py-1 focus-visible:outline-2 focus-visible:outline-indigo-400">Choose walls from list</summary>
+        <details className="text-[11px] text-white/50"><summary className="cursor-pointer rounded py-1 focus-visible:outline-2 focus-visible:outline-indigo-400">Choose elements from list</summary>
           <div className="mt-2 max-h-32 space-y-1 overflow-y-auto rounded-lg border border-white/10 p-2">
-            {walls.map((wall, i) => <label key={i} className="flex cursor-pointer items-center justify-between gap-2 rounded px-1 py-1 hover:bg-white/5"><span className="flex items-center gap-2"><input type="checkbox" checked={selectedWalls.includes(i)} onChange={() => onSelect(i)} className="accent-indigo-400" />{(wall.type ?? 'wall').replace(/^./, letter => letter.toUpperCase())} {i + 1}</span><span>{wall.width.toFixed(2)} m</span></label>)}
+            {walls.map((wall, i) => <label key={i} className="flex cursor-pointer items-center justify-between gap-2 rounded px-1 py-1 hover:bg-white/5"><span className="flex items-center gap-2"><input type="checkbox" checked={selectedWalls.includes(i)} onChange={() => onSelect(i)} className="accent-indigo-400" />{elementType(wall)[0].toUpperCase() + elementType(wall).slice(1)} {i + 1}</span><span>{wall.width.toFixed(2)} m</span></label>)}
           </div>
         </details>
       </div>}
@@ -39,8 +40,8 @@ export default function SectionControls({ section, bounds, walls, selectedWalls,
         {area && <div className="flex items-center justify-between gap-2 text-[11px]"><span role="status" className="text-indigo-200">{(area.maxX - area.minX).toFixed(2)} × {(area.maxZ - area.minZ).toFixed(2)} m selected</span><button type="button" onClick={() => onArea(null)} className="rounded px-1 py-1 text-white/60 hover:text-white focus-visible:outline-2 focus-visible:outline-indigo-400">Clear area</button></div>}
         <details className="text-[11px] text-white/45"><summary className="cursor-pointer rounded py-1 focus-visible:outline-2 focus-visible:outline-indigo-400">Plan and numeric bounds</summary><AreaPicker walls={walls} bounds={bounds} area={area} onChange={onArea} /></details>
       </div>}
-      {enabled && targetMissing && <p role="status" className="mt-3 rounded-lg bg-indigo-400/10 px-3 py-2 text-[11px] leading-5 text-indigo-200">{scope === 'walls' ? 'Select walls to start cutting. Other walls stay intact.' : 'Select an area directly in the 3D viewer to start cutting.'}</p>}
-    </div>
+      {enabled && targetMissing && <p role="status" className="mt-3 rounded-lg bg-indigo-400/10 px-3 py-2 text-[11px] leading-5 text-indigo-200">{scope === 'walls' ? 'Select elements to start cutting. Other parts stay intact.' : 'Select an area directly in the 3D viewer to start cutting.'}</p>}
+    </details>
     <div className="mt-4 grid grid-cols-2 gap-2" role="group" aria-label="Cut orientation">
       <button type="button" aria-pressed={axis === 'y'} onClick={() => onAxis('y')} className={choiceStyle(axis === 'y')}>Horizontal</button>
       <button type="button" aria-pressed={axis !== 'y'} onClick={() => onAxis(axis === 'y' ? 'x' : axis)} className={choiceStyle(axis !== 'y')}>Vertical</button>

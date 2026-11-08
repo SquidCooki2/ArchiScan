@@ -59,18 +59,24 @@ Returns `200 { "status": "ok" }`. Used for smoke tests and for the frontend to v
 
 ### `POST /api/parse-blueprint`
 **Request** (`Content-Type: application/json`):
+Accepts either a single floor image or an `images` array for multi-floor buildings (ordered bottom-to-top, up to `MAX_FLOORS = 5`):
 ```json
+// Single floor:
 { "image": "<raw base64, no data: prefix>", "mediaType": "image/png" }
-```
-*   `image`: required string. If it begins with `data:`, strip the prefix and derive `mediaType` from it (be lenient).
-*   `mediaType`: one of `image/png`, `image/jpeg`, `image/webp`, `image/gif`. Default `image/png` if omitted and not derivable.
 
-**Success `200`:** a bare JSON array of architectural elements (`"wall"`, `"window"`, `"door"`, units in **meters**, see Coordinate Convention):
+// Multi-floor (each entry may be { image, mediaType } or a raw base64/data-URL string):
+{ "images": [{ "image": "<floor 0 base64>", "mediaType": "image/png" }, { "image": "<floor 1 base64>", "mediaType": "image/png" }] }
+```
+*   `image`: required string (or inside each entry of `images`). If it begins with `data:`, strip the prefix and derive `mediaType` from it (be lenient). Also sniff the magic bytes so mismatched extensions (e.g. WebP named `.png`) are corrected automatically.
+*   `mediaType`: one of `image/png`, `image/jpeg`, `image/webp`, `image/gif`. Default `image/png` if omitted and not derivable.
+*   Multi-floor processing: parse all floor images in parallel via `Promise.all`, tagging each floor's validated elements with `"floor": floorIndex` (`0`, `1`, ...) before flattening into a single array.
+
+**Success `200`:** a bare JSON array of architectural elements (`"wall"`, `"window"`, `"door"`, with `"floor": 0, 1, ...`, units in **meters**, see Coordinate Convention):
 ```json
 [
-  { "type": "wall", "x": 0.95, "z": 0.12, "width": 1.9, "depth": 0.24, "rotation": 0 },
-  { "type": "window", "x": 2.9, "z": 0.12, "width": 2.0, "depth": 0.24, "rotation": 0, "sillHeight": 0.9, "height": 1.2 },
-  { "type": "door", "x": 6.0, "z": 0.12, "width": 0.9, "depth": 0.24, "rotation": 0, "sillHeight": 0, "height": 2.1 }
+  { "type": "wall", "floor": 0, "x": 0.95, "z": 0.12, "width": 1.9, "depth": 0.24, "rotation": 0 },
+  { "type": "window", "floor": 0, "x": 2.9, "z": 0.12, "width": 2.0, "depth": 0.24, "rotation": 0, "sillHeight": 0.9, "height": 1.2 },
+  { "type": "door", "floor": 1, "x": 6.0, "z": 0.12, "width": 0.9, "depth": 0.24, "rotation": 0, "sillHeight": 0, "height": 2.1 }
 ]
 ```
 **Error responses** always use the shape `{ "error": { "code": "<MACHINE_CODE>", "message": "<human text>" } }`:

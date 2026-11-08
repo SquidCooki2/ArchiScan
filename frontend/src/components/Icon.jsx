@@ -1,5 +1,6 @@
 export default function Icon({ name, className = 'size-5' }) {
   const paths = {
+    person: <><circle cx="12" cy="4" r="2" /><path d="M12 7v8m-5-5 5-3 5 3m-5 5-4 6m4-6 4 6" /></>,
     upload: <><path d="M12 16V4m-4 4 4-4 4 4" /><path d="M4 16v4h16v-4" /></>,
     cube: <><path d="m12 3 9 5v8l-9 5-9-5V8l9-5Z" /><path d="m3 8 9 5 9-5m-9 5v8M7.5 5.5l9 5" /></>,
     arrow: <path d="M4 12h16m-6-6 6 6-6 6" />,

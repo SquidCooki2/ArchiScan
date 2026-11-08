@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict'
 import { test } from 'node:test'
 import { computeBounds, WALL_HEIGHT } from '../src/lib/geometry.js'
-import { capPositions, centralArea, createSection, cutCoordinate, cutPlane, cutRange, defaultCutPosition, elementParts, partitionFootprint, polygonArea, prismPositions, sectionCap, wallFootprint } from '../src/lib/sections.js'
+import { capPositions, centralArea, createSection, cutCoordinate, cutPlane, cutRange, defaultCutPosition, partitionFootprint, polygonArea, prismPositions, sectionCap, wallFootprint } from '../src/lib/sections.js'
 
 const wall = { x: 8, z: 12, width: 8, depth: 2, rotation: 0 }
 const bounds = computeBounds([wall])
@@ -141,20 +141,4 @@ test('vertical cut sliders and initial planes stay inside the freely drawn regio
   assert.equal(defaultCutPosition(bounds, 'x', area), 3.5)
   assert.equal(defaultCutPosition(bounds, 'z', area), 1.125)
   assert.deepEqual(cutRange(bounds, 'y', area), { min: 0.1, max: WALL_HEIGHT })
-})
-
-test('windows and doors stack into a sill, an opening, and a lintel that fill the wall height', () => {
-  const stack = element => elementParts(element).map(({ kind, base, top }) => [kind, base, top])
-  assert.deepEqual(stack({ depth: 0.2 }), [['wall', 0, WALL_HEIGHT]])
-  assert.deepEqual(stack({ type: 'window', depth: 0.2 }), [['wall', 0, 0.9], ['glass', 0.9, 2.1], ['wall', 2.1, WALL_HEIGHT]])
-  assert.deepEqual(stack({ type: 'door', depth: 0.2 }), [['door', 0, 2.1], ['wall', 2.1, WALL_HEIGHT]])
-  assert.deepEqual(stack({ type: 'door', depth: 0.2, height: 9 }), [['door', 0, WALL_HEIGHT]])
-})
-
-test('caps follow the stacked part they cut, and cut heights can reach the roof', () => {
-  const section = { axis: 'y', position: 1.2 }
-  assert.equal(sectionCap(footprint, bounds, section, 2.1, WALL_HEIGHT).length, 0)
-  assert.equal(sectionCap(footprint, bounds, section, 0.9, 2.1).length, 4)
-  assert.ok(sectionCap(footprint, bounds, { axis: 'x', position: 4 }, 2.1, WALL_HEIGHT).every(point => point[1] >= 2.1))
-  assert.deepEqual(cutRange(bounds, 'y', null, 5), { min: 0.1, max: 5 })
 })

@@ -25,7 +25,7 @@ function SelectionBox({ area, drawing = false }) {
       <meshBasicMaterial color="#818cf8" transparent opacity={0.2} depthWrite={false} />
     </mesh>
     <Html center position={[area.minX, WALL_HEIGHT + 0.4, area.minZ]} zIndexRange={[10, 0]} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-      <span className="rounded-md border border-indigo-300/30 bg-neutral-950/90 px-2 py-1 text-[10px] text-indigo-200">{drawing ? 'Selecting' : 'Selected area'} · {width.toFixed(2)} × {depth.toFixed(2)} m</span>
+      <span className={`${drawing ? 'inline-block' : 'hidden sm:inline-block'} rounded-md border border-indigo-300/30 bg-neutral-950/90 px-2 py-1 text-[10px] text-indigo-200`}>{drawing ? 'Selecting' : 'Selected area'} · {width.toFixed(2)} × {depth.toFixed(2)} m</span>
     </Html>
   </group>
 }
@@ -96,7 +96,7 @@ function RegionHandles({ bounds, area, onArea, onDragging, position, onPosition 
     <SceneHandle name="selection-move-handle" color="#e0e7ff" position={[cx, y + 0.25, cz]}
       onPointerDown={event => drag.start(event, new THREE.Plane(new THREE.Vector3(0, 1, 0), -y - 0.25), (point, start) => onArea(moveSelection(area, point.x - start.x, point.z - start.z, bounds)), cancel)} {...drag.handlers} />
     <Html center position={[cx, y + 0.65, cz]} zIndexRange={[10, 0]} style={{ pointerEvents: 'none', whiteSpace: 'nowrap' }}>
-      <span className="rounded bg-neutral-950/90 px-2 py-1 text-[10px] text-white/60">White handle: move · Corners: resize</span>
+      <span className="hidden rounded bg-neutral-950/90 px-2 py-1 text-[10px] text-white/60 sm:inline-block">White handle: move · Corners: resize</span>
     </Html>
   </group>
 }

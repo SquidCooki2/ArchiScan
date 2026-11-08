@@ -58,18 +58,19 @@ Flow:
 5. `error`: toast with the backend's `error.message`; return to `idle`, keeping the previous model if one exists.
 
 ## 6. API Layer (`api/parseBlueprint.js`)
-*   `fileToBase64(file)`: use `FileReader.readAsDataURL`, then strip the `data:...;base64,` prefix. Return `{ base64, mediaType: file.type }`.
-*   `parseBlueprint(file)`: `fetch(`${VITE_API_URL}/api/parse-blueprint`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ image: base64, mediaType }) })`.
+*   `fileToBase64(file)`: use `FileReader.readAsDataURL`, then strip the `data:...;base64,` prefix. Return `{ image: base64, mediaType: file.type }`.
+*   `parseBlueprint(files)`: accepts either a single `File` or an array of `File`s (ordered Floor 1, Floor 2, ..., up to 5). For a single file, sends `{ image, mediaType }`; for multiple files, sends `{ images: [{ image, mediaType }, ...] }` to `POST ${VITE_API_URL}/api/parse-blueprint`.
 *   On `!res.ok`: parse JSON, throw `new Error(body.error?.message ?? 'Request failed')`. On network failure throw "Cannot reach the server".
-*   Success returns the walls array. Check `Array.isArray` and non-empty before updating state.
+*   Success returns the elements array. Check `Array.isArray` and non-empty before updating state.
 *   Use an `AbortController` with a 150 s timeout (Claude Opus calls are slow).
 *   While the backend is not built, `?mock=1` in the URL (or a missing `VITE_API_URL`) loads `samples/sampleWalls.json` after a 1.5 s artificial delay.
 
 ## 7. Data Contract & Coordinates (must match `docs/backend_plan.md` section 6)
-Each element in the array has `{ type, x, z, width, depth, rotation, sillHeight?, height? }` in **meters**:
+Each element in the array has `{ type, floor, x, z, width, depth, rotation, sillHeight?, height? }` in **meters**:
 *   `type`: `"wall" | "window" | "door"` (treat missing `type` as `"wall"`).
+*   `floor`: non-negative integer (`0` = ground floor, `1` = second floor, etc.; treat missing `floor` as `0` for backwards compatibility).
 *   `(x, z)` is the element's **center**; `width` is length along local X; `depth` is thickness along local Z; `rotation` is radians around Y. Origin is the top-left of the plan, +X right, +Z down the image.
-*   `sillHeight` and `height`: vertical placement and height in meters for `"window"` (default `0.9` and `1.2`) and `"door"` (default `0` and `2.1`). Full wall height is `WALL_HEIGHT = 2.7`. 
+*   `sillHeight` and `height`: vertical placement and height in meters for `"window"` (default `0.9` and `1.2`) and `"door"` (default `0` and `2.1`). Full wall height per floor is `WALL_HEIGHT = 2.7`. 
 
 ## 8. 3D Viewer
 ### Canvas & camera
@@ -98,15 +99,17 @@ Drei `<OrbitControls makeDefault enableDamping maxPolarAngle={Math.PI / 2 - 0.05
     *   **`"door"`** (`sill = w.sillHeight ?? 0`, `h = w.height ?? 2.1`, `topH = Math.max(0, WALL_HEIGHT - (sill + h))`):
         *   Header/lintel wall (if `topH > 0`): box `[w.width, topH, w.depth]` at `y = sill + h + topH / 2` using `wallMaterial`.
         *   Door panel: box `[w.width, h, Math.min(w.depth * 0.4, 0.06)]` at `y = sill + h / 2` using `doorMaterial`.
-*   Apply `rotation={[0, -w.rotation, 0]}` on each element's `<group position={[w.x, 0, w.z]} rotation={[0, -w.rotation, 0]}>` so child meshes only need local `[0, y, 0]` positions.
+*   Apply `const floorY = (w.floor ?? 0) * WALL_HEIGHT` and `rotation={[0, -w.rotation, 0]}` on each element's `<group position={[w.x, floorY, w.z]} rotation={[0, -w.rotation, 0]}>` so child meshes only need local `[0, y, 0]` positions and multi-floor elements stack automatically.
+*   If the payload contains upper floors (`maxFloor > 0`), render a thin translucent floor slab at `y = f * WALL_HEIGHT` for each upper floor `f = 1..maxFloor` sized to that floor's bounds, clipped by the same section plane.
 *   Use `key={index}`.
 
 ### Floor (`Floor.jsx`)
 A `<mesh rotation-x={-Math.PI / 2}>` plane at `y = 0` slightly larger than the bounds (`size + 4`), dark material that receives shadows, plus Drei `<Grid infiniteGrid fadeDistance={40} cellColor="#333" sectionColor="#555" />`.
 
 ## 9. Section View (clipping plane)
+*   Compute `totalHeight = (maxFloor + 1) * WALL_HEIGHT` (where `maxFloor = Math.max(0, ...walls.map(w => w.floor ?? 0))`).
 *   Create one plane: `const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, -1, 0), clipHeight), [])` and update `plane.constant = clipHeight` in `useEffect`/`useFrame` when state changes. A normal of `(0, -1, 0)` keeps everything **below** `y = clipHeight`; the plane is `-y + constant >= 0` so `constant = clipHeight` cuts at that height.
-*   Slider: `<input type="range" min={0.1} max={WALL_HEIGHT} step={0.01}>` in `SectionControls`, default value `WALL_HEIGHT` (no cut). Show the current height as `1.35 m` text. A "Section view" toggle sets `clipEnabled`; when disabled, pass `clippingPlanes={[]}`.
+*   Slider: `<input type="range" min={0.1} max={totalHeight} step={0.01}>` in `SectionControls`, default value `totalHeight` (no cut). Show the current height as `1.35 m` text (and optionally quick-jump floor buttons when `maxFloor > 0`). A "Section view" toggle sets `clipEnabled`; when disabled, pass `clippingPlanes={[]}`.
 *   Style the slider via Tailwind (`accent-indigo-400 w-full`), in a floating glass panel `fixed bottom-6 left-1/2 -translate-x-1/2 w-80`.
 *   Clipped walls appear hollow when cut. Provide a cap: render each wall also with a `BackSide` material in a flat accent colour (`side: THREE.BackSide`, same clipping plane) so the cut interior reads as a solid fill. Do this once the basics work (stretch goal).
 *   Optional stretch: a second slider or buttons to cut along X or Z axes.
