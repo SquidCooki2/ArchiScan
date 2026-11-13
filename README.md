@@ -1,5 +1,7 @@
 # ArchiTech
 
+See the devpost: https://devpost.com/software/archiscan
+
 Upload a floor plan and get a 3D building you can cut open, walk through, plan an escape route in, and price up. The backend reads the drawing with the Claude API. A plan saved as JSON opens without it.
 
 ## Run it
